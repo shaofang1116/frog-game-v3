@@ -5,8 +5,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const repoRoot = path.resolve(__dirname, '..');
-const expectedBaselineHash =
-  '00a079310d941c0238b8dca505811369ef1448b0e60c80088ffccca353f830bd';
 const stageTwoBackgroundPath = path.join(
   repoRoot,
   'assets',
@@ -22,12 +20,13 @@ const expectedStageOneBackgroundHash =
 const expectedStageTwoBackgroundHash =
   'aadac9b9483900e66b71c4513e6b16115e59532c86002dec37de85f0527b35d5';
 
-test('the V3 root game is distinct from the preserved V2 baseline', () => {
-  assert.notEqual(hashFile(path.join(repoRoot, 'index.html')), expectedBaselineHash);
-  assert.equal(
-    hashFile(path.join(repoRoot, 'baseline', 'v2', 'index.html')),
-    expectedBaselineHash
-  );
+test('the V3 root is the only playable entry and loads its local runtime modules', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.match(html, /<title>🐸 荷塘大冒险 V3 · 青蛙跳荷叶<\/title>/);
+  assert.match(html, /<script src="\.\/src\/input\.js"><\/script>/);
+  assert.match(html, /<script src="\.\/src\/stage-transition\.js"><\/script>/);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'demo')), false);
 });
 
 test('the V3 root game loads input and journey policies without the legacy charge control', () => {

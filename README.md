@@ -69,10 +69,9 @@ assets/          晨雾和暴雨本地背景
 tests/           Node 与浏览器验证
 schemas/          MapThemePackage JSON Schema
 scripts/          主题验证、导入、审计和证据工具
-baseline/v2/      V2 历史页面证据，不是运行入口
 ```
 
-`/demo/` 已退役。GitHub Pages 从仓库根目录发布 V3。
+`/demo/` 和 V2 历史快照均不包含在 V3 发布仓库中。GitHub Pages 从仓库根目录发布 V3。
 
 ## 架构约束
 
@@ -81,8 +80,7 @@ baseline/v2/      V2 历史页面证据，不是运行入口
 - `src/game-elements.js` 是青蛙、荷叶、鳄鱼、奖励和预览的统一视觉 owner。
 - `src/stage-transition.js` 是地图切换时序和莲叶覆盖层的唯一 owner。未来地图仅可参数化复用，不能新增第二套转场状态机。
 - 视觉渲染不能修改分数、碰撞、生成、输入或其他游戏真相。
-
-完整决策记录见 [`docs/aegis/adr/0001-lily-wipe-stage-transition.md`](docs/aegis/adr/0001-lily-wipe-stage-transition.md)。
+- 地图转场固定为 `1100ms` 莲叶擦除：覆盖峰值切换背景，转场期间暂停输入、计时、危险物、相机与下沉计时。
 
 ## 部署
 

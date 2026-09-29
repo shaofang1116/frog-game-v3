@@ -14,7 +14,7 @@ async function main() {
   const args = process.argv.slice(2);
   const root = valueFor(args, '--root') || repositoryRoot;
   const revision = valueFor(args, '--staging-fixture') ||
-    path.join(repositoryRoot, 'demo', 'tests', 'fixtures', 'map-theme', 'valid');
+    path.join(repositoryRoot, 'tests', 'fixtures', 'map-theme', 'valid');
   const runtime = valueFor(args, '--runtime') || path.join(revision, 'runtime', 'fixture-map');
   if ((args.includes('--root') && !valueFor(args, '--root')) ||
       (args.includes('--staging-fixture') && !valueFor(args, '--staging-fixture')) ||
