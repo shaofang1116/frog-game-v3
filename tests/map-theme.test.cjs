@@ -91,8 +91,8 @@ test('loads only receipt-qualified production packages and uses neutral fallback
   assert.equal(result.kind, 'package');
   assert.equal(result.mode, 'production');
   assert.deepEqual(calls, [
-    'demo/maps/fixture-map/map-theme.json',
-    'demo/maps/fixture-map/import-receipt.json'
+    'maps/fixture-map/map-theme.json',
+    'maps/fixture-map/import-receipt.json'
   ]);
 
   const fallback = await FrogMapTheme.loadTheme({
@@ -134,7 +134,7 @@ test('enforces the preview and production loading matrix and preview-root contai
     ['absolute preview root', { previewRoots: { morningThemePreviewRoot: '/map-theme-staging/a/build', stormThemePreviewRoot: previewRoot }, previewKey: 'morningThemePreviewRoot' }],
     ['cross-origin preview root', { previewRoots: { morningThemePreviewRoot: 'https://example.test/map-theme-staging/a/build', stormThemePreviewRoot: previewRoot }, previewKey: 'morningThemePreviewRoot' }],
     ['traversal preview root', { previewRoots: { morningThemePreviewRoot: 'map-theme-staging/a/../b/build', stormThemePreviewRoot: previewRoot }, previewKey: 'morningThemePreviewRoot' }],
-    ['outside staging root', { previewRoots: { morningThemePreviewRoot: 'demo/maps/fixture-map', stormThemePreviewRoot: previewRoot }, previewKey: 'morningThemePreviewRoot' }]
+    ['outside staging root', { previewRoots: { morningThemePreviewRoot: 'maps/fixture-map', stormThemePreviewRoot: previewRoot }, previewKey: 'morningThemePreviewRoot' }]
   ]) {
     const result = await FrogMapTheme.loadTheme({
       packageId: 'fixture-map',

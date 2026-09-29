@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const repoRoot = path.resolve(__dirname, '..', '..');
+const repoRoot = path.resolve(__dirname, '..');
 const schemaDir = path.join(repoRoot, 'schemas', 'map-theme');
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const run = (script, args) => spawnSync(process.execPath, [path.join(repoRoot, 'scripts', script), ...args], {
@@ -15,7 +15,7 @@ const run = (script, args) => spawnSync(process.execPath, [path.join(repoRoot, '
 const writeJson = (file, value) => fs.writeFile(file, `${JSON.stringify(value)}\n`);
 
 test('all version-1 governance schemas load with immutable identifiers', async () => {
-  const { loadMapThemeSchemas } = await import('../../scripts/lib/map-theme-schema.mjs');
+  const { loadMapThemeSchemas } = await import('../scripts/lib/map-theme-schema.mjs');
   const { schemas } = await loadMapThemeSchemas(schemaDir);
   assert.equal(schemas.length, 17);
   for (const { file, schema } of schemas) {
@@ -25,7 +25,7 @@ test('all version-1 governance schemas load with immutable identifiers', async (
 });
 
 test('package schema rejects unknown fields, invalid assets, and protected overrides', async () => {
-  const { loadMapThemeSchemas } = await import('../../scripts/lib/map-theme-schema.mjs');
+  const { loadMapThemeSchemas } = await import('../scripts/lib/map-theme-schema.mjs');
   const { ajv } = await loadMapThemeSchemas(schemaDir);
   const validate = ajv.getSchema('map-theme-package-v1.schema.json');
   const packageData = validPackage();
@@ -39,7 +39,7 @@ test('package schema rejects unknown fields, invalid assets, and protected overr
 });
 
 test('canonical JSON and source/package hash protocols are deterministic', async () => {
-  const { canonicalJsonHash, packageContentHash, sourceBundleHash } = await import('../../scripts/lib/map-theme-hash.mjs');
+  const { canonicalJsonHash, packageContentHash, sourceBundleHash } = await import('../scripts/lib/map-theme-hash.mjs');
   assert.equal(canonicalJsonHash({ b: 'x', a: 1 }), canonicalJsonHash({ a: 1, b: 'x' }));
   const sourceHash = await sourceBundleHash({
     files: [{ role: 'source-design', path: 'design.png', mediaType: 'image/png', sha256: 'a'.repeat(64) }]
@@ -129,7 +129,7 @@ test('Task8 intake composition creates reproducible, closed revisions without bu
     expectPass(first);
     const revision = first.stdout.trim();
     const bundle = JSON.parse(await fs.readFile(path.join(revision, 'source', 'source-bundle.json')));
-    const { canonicalJsonHash, sourceBundleHash } = await import('../../scripts/lib/map-theme-hash.mjs');
+    const { canonicalJsonHash, sourceBundleHash } = await import('../scripts/lib/map-theme-hash.mjs');
     const expectedId = `r0001-${(await sourceBundleHash(bundle)).slice(0, 12)}-${canonicalJsonHash(JSON.parse(await fs.readFile(path.join(revision, 'source', 'map-design-brief.json')))).slice(0, 12)}`;
     assert.equal(path.basename(revision), expectedId);
     assert.equal(await fs.stat(intake).then(() => true, () => false), false, 'verified intake is removed');
@@ -251,7 +251,7 @@ async function createRevision(root) {
 }
 
 async function writeValidationAndImportApproval(revision) {
-  const { canonicalJsonHash, packageContentHash } = await import('../../scripts/lib/map-theme-hash.mjs');
+  const { canonicalJsonHash, packageContentHash } = await import('../scripts/lib/map-theme-hash.mjs');
   const manifest = JSON.parse(await fs.readFile(path.join(revision, 'build/map-theme.json')));
   const mapping = JSON.parse(await fs.readFile(path.join(revision, 'approval/mapping-approval.json')));
   const review = JSON.parse(await fs.readFile(path.join(revision, 'review/review-evidence.json')));
@@ -279,7 +279,7 @@ function canonical(value) {
   return sha(Buffer.from(canonicalize(value), 'utf8'));
 }
 async function sourceBundle(bundle) {
-  const { sourceBundleHash } = await import('../../scripts/lib/map-theme-hash.mjs');
+  const { sourceBundleHash } = await import('../scripts/lib/map-theme-hash.mjs');
   return sourceBundleHash(bundle);
 }
 function validPackage(sourceEvidence = { revisionId: 'r0001', sourceBundleHash: 'a'.repeat(64), briefHash: 'a'.repeat(64), provenanceId: 'original-art', provenanceHash: 'a'.repeat(64), mappingApprovalHash: 'a'.repeat(64) }) {

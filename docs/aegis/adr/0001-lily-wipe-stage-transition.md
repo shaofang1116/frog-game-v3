@@ -38,7 +38,7 @@ replace the covered-swap timing without a new architecture decision.
 - Map changes retain a recognizable interaction rhythm and avoid abrupt visual
   swaps.
 - Gameplay truth remains in `Game`; transition rendering remains independently
-  testable in `demo/src/stage-transition.js`.
+  testable in `src/stage-transition.js`.
 - The legacy rectangular crocodile warning outline is retired; warnings must
   not use a surrounding collision-like frame.
 

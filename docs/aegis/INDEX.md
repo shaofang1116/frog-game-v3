@@ -3,6 +3,7 @@
 ## Baselines
 
 - [2026-09-28 Initial Baseline](baseline/2026-09-28-initial-baseline.md)
+- [2026-09-29 V3 Root Layout](baseline/2026-09-29-v3-root-layout.md)
 
 ## Specifications
 

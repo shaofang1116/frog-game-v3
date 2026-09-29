@@ -77,7 +77,7 @@
       if (!isId(settings.packageId)) fail('Map theme package ID is invalid');
       const packageRoot = mode.mode === 'preview'
         ? mode.root
-        : `demo/maps/${settings.packageId}`;
+        : `maps/${settings.packageId}`;
       const fetchJson = settings.fetchJson || defaultFetchJson;
       const manifest = await fetchJson(`${packageRoot}/map-theme.json`);
       const normalized = normalizeManifest(manifest, settings);
