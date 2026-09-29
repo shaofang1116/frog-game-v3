@@ -1,66 +1,97 @@
-# 🐸 荷塘大冒险 V3 (Frog Pond Adventure)
+# Frog Game V3
 
-> 原生 HTML5 Canvas 2D + Web Audio API 休闲小游戏。支持移动端触屏与 PC 交互、双阶段授权环境背景，以及可复用的莲叶擦除地图转场。
+一个原生 Canvas 2D 青蛙跳荷叶游戏。V3 是独立发布版本：游戏从仓库根目录运行，采用晨雾浅塘与暴雨深湖两段环境，并以莲叶擦除完成阶段切换。
 
-![Version](https://img.shields.io/badge/version-v3.0-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Runtime](https://img.shields.io/badge/runtime-static%20Canvas-orange)
-![Tech](https://img.shields.io/badge/stack-Canvas2D%20%7C%20WebAudio-blueviolet)
+试玩地址：<https://shaofang1116.github.io/frog-game-v3/>
 
----
+## 游戏体验
 
-## 🌟 项目亮点
+- **两段连续旅程**：第 1 段为晨雾浅塘，第 2 段为暴雨深湖；分数、时间、炸弹和位置跨阶段保留。
+- **可读的风险路线**：荷叶是落点，浅色下沉荷叶会在短暂倒计时后沉没；鳄鱼在水域巡逻。
+- **资源选择**：普通莲花增加分数和时间，炸弹可清理前方区域的鳄鱼，并能在空水域生成临时落点。
+- **阶段转场**：抵达第 12 行后，巨型莲叶从边缘覆盖画面；遮挡峰值切换至暴雨背景，再展开为第 2 段。转场期间游戏计时、输入和危险物更新暂停。
+- **本地视觉资源**：两段背景均随仓库发布，运行时不依赖 CDN 或远程素材请求。
 
-- **⚡ 静态部署 & 本地资源**：运行时无 CDN 或构建依赖；授权的晨雾与暴雨背景均随仓库本地发布。
-- **🎨 纯代码矢量程序化绘图**：放弃跨平台兼容性差的系统 Emoji，改用纯 Canvas 2D 绘制矢量萌系青蛙（带跳跃挤压变形与动态投影）、水波纹、下沉荷叶与巡逻鳄鱼。
-- **🔊 Web Audio 原生合成音效**：纯数学代码实时合成起跳、水花、金币拾取、炸弹爆炸与结算音效，支持一键静音。
-- **🛣️ 前向通路可达性算法**：动态保证行与行之间必定存在安全跳跃路径，彻底杜绝孤岛死局。
-- **📱 全端多模态控制**：
-  - **移动端**：自适应竖屏，提供虚拟十字方向键 + 蓄力按键 + 炸弹按键，且支持屏幕任意位置滑动手势跳跃（Swipe）。
-  - **PC 端**：WASD / 方向键跳跃，空格蓄力，J / B / F 投掷炸弹。
-- **🏆 营销展示与社交裂变**：内置独立作品展位，结算页面智能评定段位称号，支持“一键复制格式化战报”到朋友圈与社群。
+## 操作
 
-## 📁 V3 布局
+| 动作 | 触屏 | 键盘 | 结果 |
+| --- | --- | --- | --- |
+| 单格跳跃 | 轻点 D-Pad 方向；或在 Canvas 滑动并快速松开 | `W/A/S/D` 或方向键 | 向该方向跳 1 格 |
+| 双格蓄力跳跃 | 按住 D-Pad 方向约 `320ms`；或先滑动超过 `28px` 锁定方向并继续按住约 `320ms` | `Shift` + 方向键或 `Shift` + `W/A/S/D` | 显示两格落点预览，松开后跳 2 格 |
+| 投掷炸弹 | 点按右下角炸弹按钮 | `J`、`B` 或 `F` | 消耗 1 枚炸弹，清理前方附近鳄鱼 |
+| 静音 | 点按顶部音量图标 | 点按顶部音量图标 | 切换音效 |
 
-- 根目录 `index.html` 是唯一可玩的 V3 入口，也是 GitHub Pages 发布入口。
-- `src/`、`assets/` 和 `tests/` 分别管理运行模块、本地资源和验证。
-- `baseline/v2/` 仅保留 V2 历史证据，不是可运行入口。
+Canvas 斜向滑动只有在主方向比次方向至少多 `8px` 时才锁定，避免误触。页面失焦、旋转或触摸取消时，当前手势和蓄力预览会被安全清理。
 
----
+## 阶段规则
 
-## 🎮 玩法与操作说明
+| 阶段 | 行范围 | 环境 | 进入方式 |
+| --- | --- | --- | --- |
+| 1 | `0-11` | 晨雾浅塘 | 开始游戏 |
+| 过渡 | 第 `12` 行 | 莲叶擦除 | 暂停游戏更新，遮挡峰切换背景 |
+| 2 | `12-24` | 暴雨深湖 | 莲叶展开后恢复操作 |
 
-| 动作 | 移动端触屏 | PC 键盘 | 机制说明 |
-| :--- | :--- | :--- | :--- |
-| **常规跳跃** | 点击虚拟十字 D-Pad 或滑动屏幕 | `W / A / S / D` 或 `↑ / ↓ / ← / →` | 向相邻格子跳跃 1 格 |
-| **蓄力跳跃** | 点击右下角「⚡ 蓄力」按钮 | `空格键 (Space)` 或 `Shift` | 切换为超远跨水双格跳跃 |
-| **施放炸弹** | 点击右下角「💣 炸弹」按钮 | `J` / `B` / `F` | 净化前方 3×3 水域并炸退鳄鱼 |
-| **捡拾道具** | 跳上带有莲花/炸弹的荷叶 | 同左 | 拾取粉色莲花：+50 分 & +5 秒；拾取炸弹：补给技能次数 |
-| **避让危险** | 避免踏空、下沉荷叶与鳄鱼 | 同左 | 浅色荷叶踩中 1.6 秒后沉没；巡逻鳄鱼靠近前有警示水波 |
+阶段切换不会重置本局状态。游戏在第 `24` 行完成。
 
----
+## 本地运行
 
-## 🚀 部署上线指引 (GitHub Pages 一键开启)
+要求：Node.js 18+。
 
-本项目采用标准的静态网页结构，只需托管 `index.html` 即可在线体验：
+```bash
+npm ci
+npm run test:unit
+npm run serve
+```
 
-1. **新建或推送到仓库**：
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: release frog game v3"
-   git branch -M main
-   git remote add origin <你的 GitHub 仓库地址>
-   git push -u origin main
-   ```
-2. **开启 GitHub Pages**：
-   - 进入 GitHub 仓库页面，点击 **Settings** -> **Pages**。
-   - 在 **Build and deployment** 下方的 **Source** 选择 `Deploy from a branch`。
-   - **Branch** 选择 `main` 分支根目录 `/ (root)`，点击 **Save**。
-   - 稍等 1~2 分钟，即可获得全局访问链接（如 `https://<username>.github.io/<repo>/`）。
+打开 <http://127.0.0.1:4173/>。
 
----
+## 验证
 
-## 📄 开源许可
+```bash
+# 全部 Node 行为、结构和治理测试
+npm run test:unit
 
-本项目基于 [MIT License](LICENSE) 开源。
+# MapThemePackage 审计工具
+npm run audit:map-themes
+
+# Playwright 配置下的浏览器测试
+npm run test:browser
+```
+
+当前测试覆盖输入取消与蓄力、阶段旅程、奖励结算、背景资源哈希、莲叶擦除转场、元素绘制及 MapThemePackage 治理链。
+
+## 项目结构
+
+```text
+index.html       V3 游戏入口和运行时编排
+src/             输入、旅程、奖励、元素、转场与主题模块
+assets/          晨雾和暴雨本地背景
+tests/           Node 与浏览器验证
+schemas/          MapThemePackage JSON Schema
+scripts/          主题验证、导入、审计和证据工具
+baseline/v2/      V2 历史页面证据，不是运行入口
+```
+
+`/demo/` 已退役。GitHub Pages 从仓库根目录发布 V3。
+
+## 架构约束
+
+- `index.html` 是唯一运行时编排者；碰撞真相在 `Game.rows`。
+- `src/input.js` 是手势解释与取消行为的唯一 owner。
+- `src/game-elements.js` 是青蛙、荷叶、鳄鱼、奖励和预览的统一视觉 owner。
+- `src/stage-transition.js` 是地图切换时序和莲叶覆盖层的唯一 owner。未来地图仅可参数化复用，不能新增第二套转场状态机。
+- 视觉渲染不能修改分数、碰撞、生成、输入或其他游戏真相。
+
+完整决策记录见 [`docs/aegis/adr/0001-lily-wipe-stage-transition.md`](docs/aegis/adr/0001-lily-wipe-stage-transition.md)。
+
+## 部署
+
+GitHub Pages 使用 `main` 分支的仓库根目录发布。推送后访问：
+
+```text
+https://shaofang1116.github.io/frog-game-v3/
+```
+
+## 许可证
+
+当前仓库尚未声明开源许可证。未经权利人明确授权，请勿将本项目的代码或本地美术资源用于再分发。
