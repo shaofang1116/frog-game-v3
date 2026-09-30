@@ -21,11 +21,23 @@ const stage2 = {
   reward: {
     score: 150,
     time: 8,
+    bomb: 1
+  },
+  checkpoint: {
+    id: 'stage-2-golden-lotus'
+  }
+};
+
+const stage3 = {
+  id: 3,
+  reward: {
+    score: 150,
+    time: 8,
     bomb: 1,
     finalConversion: true
   },
   checkpoint: {
-    id: 'stage-2-golden-lotus'
+    id: 'stage-3-golden-lotus'
   }
 };
 
@@ -84,7 +96,7 @@ test('Stage 1 caps bombs at five and reports the actual zero delta', () => {
   });
 });
 
-test('Stage 2 converts virtual resources from zero inventory and retains exact breakdown', () => {
+test('Stage 2 grants the standard checkpoint reward without a bomb cap', () => {
   const result = settleCheckpoint(input({
     stageId: 2,
     checkpointId: 'stage-2-golden-lotus',
@@ -95,10 +107,80 @@ test('Stage 2 converts virtual resources from zero inventory and retains exact b
 
   assert.deepEqual(result, {
     applied: true,
+    nextScore: 150,
+    nextTimeLeft: 8,
+    nextBombs: 1,
+    nextClaimedCheckpointIds: ['stage-2-golden-lotus'],
+    breakdown: {
+      scoreBefore: 0,
+      lotusScore: 150,
+      scoreAfterLotus: 150,
+      time: {
+        actual: 0,
+        virtual: 8,
+        units: 8,
+        bonus: 0
+      },
+      bombs: {
+        actual: 0,
+        virtual: 1,
+        units: 1,
+        granted: 1,
+        bonus: 0
+      },
+      finalScore: 150
+    }
+  });
+});
+
+test('Stage 2 retains existing resources and adds a bomb beyond the Stage 1 cap', () => {
+  const result = settleCheckpoint(input({
+    stageId: 2,
+    checkpointId: 'stage-2-golden-lotus',
+    score: 100,
+    timeLeft: 12,
+    bombs: 5
+  }), stage2);
+
+  assert.equal(result.nextScore, 250);
+  assert.equal(result.nextTimeLeft, 20);
+  assert.equal(result.nextBombs, 6);
+  assert.deepEqual(result.breakdown, {
+    scoreBefore: 100,
+    lotusScore: 150,
+    scoreAfterLotus: 250,
+    time: {
+      actual: 12,
+      virtual: 8,
+      units: 20,
+      bonus: 0
+    },
+    bombs: {
+      actual: 5,
+      virtual: 1,
+      units: 6,
+      granted: 1,
+      bonus: 0
+    },
+    finalScore: 250
+  });
+});
+
+test('Stage 3 converts virtual resources from zero inventory and retains exact breakdown', () => {
+  const result = settleCheckpoint(input({
+    stageId: 3,
+    checkpointId: 'stage-3-golden-lotus',
+    score: 0,
+    timeLeft: 0,
+    bombs: 0
+  }), stage3);
+
+  assert.deepEqual(result, {
+    applied: true,
     nextScore: 280,
     nextTimeLeft: 0,
     nextBombs: 0,
-    nextClaimedCheckpointIds: ['stage-2-golden-lotus'],
+    nextClaimedCheckpointIds: ['stage-3-golden-lotus'],
     breakdown: {
       scoreBefore: 0,
       lotusScore: 150,
@@ -119,40 +201,6 @@ test('Stage 2 converts virtual resources from zero inventory and retains exact b
       lotusContribution: 280,
       finalScore: 280
     }
-  });
-});
-
-test('Stage 2 converts nonzero inventory without applying the Stage 1 bomb cap', () => {
-  const result = settleCheckpoint(input({
-    stageId: 2,
-    checkpointId: 'stage-2-golden-lotus',
-    score: 100,
-    timeLeft: 12,
-    bombs: 5
-  }), stage2);
-
-  assert.equal(result.nextScore, 750);
-  assert.equal(result.nextTimeLeft, 0);
-  assert.equal(result.nextBombs, 0);
-  assert.deepEqual(result.breakdown, {
-    scoreBefore: 100,
-    lotusScore: 150,
-    scoreAfterLotus: 250,
-    time: {
-      actual: 12,
-      virtual: 8,
-      units: 20,
-      bonus: 200
-    },
-    bombs: {
-      actual: 5,
-      virtual: 1,
-      units: 6,
-      granted: 1,
-      bonus: 300
-    },
-    lotusContribution: 280,
-    finalScore: 750
   });
 });
 

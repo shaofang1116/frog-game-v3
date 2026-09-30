@@ -26,6 +26,7 @@ test('the V3 root is the only playable entry and loads its local runtime modules
   assert.match(html, /<title>🐸 荷塘大冒险 V3 · 青蛙跳荷叶<\/title>/);
   assert.match(html, /<script src="\.\/src\/input\.js"><\/script>/);
   assert.match(html, /<script src="\.\/src\/stage-transition\.js"><\/script>/);
+  assert.match(html, /<script src="\.\/src\/map-path\.js"><\/script>/);
   assert.equal(fs.existsSync(path.join(repoRoot, 'demo')), false);
 });
 
@@ -36,6 +37,23 @@ test('the V3 root game loads input and journey policies without the legacy charg
   assert.match(html, /<script src="\.\/src\/journey\.js"><\/script>/);
   assert.doesNotMatch(html, /id="btn-charge"/);
   assert.doesNotMatch(html, /chargeMode/);
+});
+
+test('the bomb sound preserves the blast while removing its long tail', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const playBomb = html.match(
+    /playBomb\(\) \{([\s\S]*?)\n    \}\n    playGameOver/
+  );
+
+  assert.ok(playBomb);
+  assert.match(playBomb[1], /const blast = this\.ctx\.createOscillator\(\)/);
+  assert.match(playBomb[1], /blast\.type = 'sawtooth'/);
+  assert.match(playBomb[1], /blast\.frequency\.exponentialRampToValueAtTime\(72, now \+ 0\.14\)/);
+  assert.match(playBomb[1], /blast\.stop\(now \+ 0\.24\)/);
+  assert.match(playBomb[1], /const burst = this\.ctx\.createBufferSource\(\)/);
+  assert.match(playBomb[1], /const burstFilter = this\.ctx\.createBiquadFilter\(\)/);
+  assert.match(playBomb[1], /burst\.stop\(now \+ 0\.12\)/);
+  assert.doesNotMatch(playBomb[1], /chime|shock|triangle/);
 });
 
 test('the V3 root loads the local poster helper before its inline runtime', () => {
@@ -114,7 +132,7 @@ test('game over owns one immutable completed run and prepares its result-card ex
   assert.match(html, /this\.posterObjectUrl = null;/);
   assert.match(
     html,
-    /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*stageName: this\.journey\.currentStage === 1 \? '晨雾浅塘' : '暴雨深湖'\s*\}\);/
+    /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*stageName: this\.getCurrentStageName\(\)\s*\}\);/
   );
   assert.match(html, /document\.getElementById\('res-score'\)\.innerText = this\.completedRun\.score;/);
   assert.match(html, /document\.getElementById\('res-distance'\)\.innerText = `\$\{this\.completedRun\.distance\}m`;/);
@@ -150,7 +168,7 @@ test('the unified result card exports a local PNG and retains copy controls', ()
   );
   assert.match(
     prepareResultPosterExport[1],
-    /const posterBackground = this\.completedRun\.stageName === '晨雾浅塘'[\s\S]*?FrogSharePoster\.renderPoster\(\s*context,\s*this\.completedRun,\s*challengeAddress,\s*posterBackground\s*\)/
+    /const posterBackground = this\.getStageBackground\(this\.journey\.currentStage\)\.image;[\s\S]*?FrogSharePoster\.renderPoster\(\s*context,\s*this\.completedRun,\s*challengeAddress,\s*posterBackground\s*\)/
   );
   assert.match(
     prepareResultPosterExport[1],
@@ -261,9 +279,9 @@ test('the V3 root game owns the stage-transition lifecycle while the transition 
     html,
     /this\.stageTransition = FrogStageTransition\.create\(\{\s*startTime: performance\.now\(\),\s*reducedMotion: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\s*\}\);/
   );
-  assert.match(html, /this\.state = 'TRANSITIONING';/);
-  assert.match(html, /const transitionEvent = this\.stageTransition\.update\(performance\.now\(\)\);/);
-  assert.match(html, /if \(transitionEvent\.switchStage\) \{\s*this\.journey\.currentStage = 2;/);
+assert.match(html, /this\.state = 'TRANSITIONING';/);
+  assert.match(html, /updateStageTransition\(\) \{[\s\S]*?transitionEvent\.switchStage/);
+  assert.match(html, /if \(transitionEvent\.switchStage\) \{\s*this\.journey\.currentStage = this\.pendingStage;/);
   assert.match(
     html,
     /if \(transitionEvent\.completed\) \{[\s\S]*?this\.stageTransition = null;[\s\S]*?this\.state = 'PLAYING';/
@@ -307,24 +325,100 @@ test('the Stage 2 storm background remains a local authorized asset', () => {
   assert.doesNotMatch(html, /image\.src = ['"]https?:\/\//);
 });
 
+test('the Stage 3 sunset reeds background remains local and is transition-ready', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.match(html, /<script src="\.\/src\/chapters\.js"><\/script>/);
+  assert.match(html, /FrogChapters\.getJourneyOptions\(\)/);
+  assert.match(html, /stageThreeBackground:\s*\{\s*image:\s*null,\s*ready:\s*false\s*\}/);
+  assert.match(html, /this\.preloadStageThreeBackground\(\)/);
+  assert.match(html, /image\.src = '\.\/assets\/stage3-sunset-reeds\.jpg'/);
+  assert.match(html, /this\.pendingStage = result\.currentStage;[\s\S]*?this\.journey\.currentStage = previousStage;/);
+  assert.match(html, /this\.journey\.currentStage = this\.pendingStage;/);
+  assert.match(html, /this\.pendingStage = null;/);
+});
+
+test('gameplay rows consume the canonical map plan created per run', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const mapPathScriptIndex = html.indexOf('<script src="./src/map-path.js"></script>');
+  const runtimeIndex = html.indexOf('<script>\n/**');
+  const generateRow = html.match(
+    /generateRow\(rowIndex\) \{([\s\S]*?)\n    \},\n\n    getScreenX/
+  );
+
+  // The planner must load before the inline runtime can create a plan.
+  assert.ok(mapPathScriptIndex >= 0);
+  assert.ok(runtimeIndex > mapPathScriptIndex);
+
+  assert.match(html, /mapPlan:\s*null/);
+  assert.match(
+    html,
+    /this\.mapPlan = FrogMapPath\.createMapPlan\(this\.createRunSeed\(\)\);/
+  );
+  assert.match(
+    html,
+    /createRunSeed\(\) \{[\s\S]*?window\.crypto\.getRandomValues\(new Uint32Array\(1\)\)\[0\]/
+  );
+
+  assert.ok(generateRow);
+  assert.match(
+    generateRow[1],
+    /const descriptor = this\.mapPlan\.getRow\(rowIndex\);/
+  );
+  assert.match(generateRow[1], /throw new RangeError/);
+  assert.match(generateRow[1], /const tiles = descriptor\.tiles\.slice\(\);/);
+  assert.match(generateRow[1], /const items = descriptor\.items\.slice\(\);/);
+  assert.match(generateRow[1], /const sinks = new Array\(COLS\)\.fill\(0\);/);
+
+  // The inline runtime must not recreate the retired Math.random generator.
+  // Crocodile data belongs to the seeded planner and is only instantiated
+  // from the descriptor here.
+  assert.doesNotMatch(html, /validPrevCols/);
+  assert.doesNotMatch(html, /anchorCol/);
+  assert.doesNotMatch(html, /safeCol/);
+  assert.doesNotMatch(html, /firstPlayableCol/);
+  assert.doesNotMatch(html, /lastPlayableCol/);
+  assert.doesNotMatch(html, /isSunsetStage/);
+  assert.doesNotMatch(html, /\bprevRow\b/);
+  assert.match(
+    generateRow[1],
+    /descriptor\.crocodiles\.forEach\(\(crocodile\) => \{[\s\S]*?this\.crocodiles\.push/
+  );
+  assert.doesNotMatch(generateRow[1], /Math\.random/);
+});
+
+test('the canonical map planner keeps Stage 3 generation full width', () => {
+  const planner = fs.readFileSync(
+    path.join(repoRoot, 'src', 'map-path.js'),
+    'utf8'
+  );
+
+  assert.doesNotMatch(planner, /firstPlayableColumn|lastPlayableColumn|protectEdges/);
+  assert.match(planner, /for \(let column = 0; column < columns; column\+\+\)/);
+});
+
 test('each stage draws its loaded local background before entities and falls back to procedural water', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
   const stageOneBackgroundIndex = html.indexOf('this.drawStageOneMorningBackground(ctx);');
-  const stageBackgroundIndex = html.indexOf('this.drawStageTwoStormBackground(ctx);');
+  const stageTwoBackgroundIndex = html.indexOf('this.drawStageTwoStormBackground(ctx);');
+  const stageThreeBackgroundIndex = html.indexOf('this.drawStageThreeSunsetBackground(ctx);');
   const firstEntityIndex = html.indexOf('FrogGameElements.drawLilyPad(');
 
   assert.match(
     html,
-    /if \(this\.journey\.currentStage === 1 && this\.stageOneBackground\.ready\) \{\s*this\.drawStageOneMorningBackground\(ctx\);\s*\} else if \(this\.journey\.currentStage === 2 && this\.stageTwoBackground\.ready\) \{\s*this\.drawStageTwoStormBackground\(ctx\);\s*\} else \{\s*this\.drawProceduralWater\(ctx\);\s*\}/
+    /if \(this\.journey\.currentStage === 1 && this\.stageOneBackground\.ready\) \{\s*this\.drawStageOneMorningBackground\(ctx\);\s*\} else if \(this\.journey\.currentStage === 2 && this\.stageTwoBackground\.ready\) \{\s*this\.drawStageTwoStormBackground\(ctx\);\s*\} else if \(this\.journey\.currentStage === 3 && this\.stageThreeBackground\.ready\) \{\s*this\.drawStageThreeSunsetBackground\(ctx\);\s*\} else \{\s*this\.drawProceduralWater\(ctx\);\s*\}/
   );
   assert.match(html, /image\.addEventListener\('error', \(\) => \{\s*this\.stageOneBackground\.ready = false;/);
   assert.match(html, /image\.addEventListener\('error', \(\) => \{\s*this\.stageTwoBackground\.ready = false;/);
+  assert.match(html, /image\.addEventListener\('error', \(\) => \{\s*this\.stageThreeBackground\.ready = false;/);
   assert.match(html, /ctx\.drawImage\(\s*image,[\s\S]*?this\.width,\s*this\.height\s*\)/);
   assert.ok(
     stageOneBackgroundIndex >= 0 &&
-      stageBackgroundIndex >= 0 &&
+      stageTwoBackgroundIndex >= 0 &&
+      stageThreeBackgroundIndex >= 0 &&
       stageOneBackgroundIndex < firstEntityIndex &&
-      stageBackgroundIndex < firstEntityIndex
+      stageTwoBackgroundIndex < firstEntityIndex &&
+      stageThreeBackgroundIndex < firstEntityIndex
   );
 });
 

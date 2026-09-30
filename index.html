@@ -395,6 +395,11 @@
         linear-gradient(180deg, rgba(3, 18, 26, 0.18), rgba(2, 12, 18, 0.94)),
         url('./assets/storm-deep-lake-river.jpg') center / cover;
     }
+    .result-poster-card.stage-three {
+      background:
+        linear-gradient(180deg, rgba(46, 17, 44, 0.18), rgba(2, 12, 18, 0.94)),
+        url('./assets/stage3-sunset-reeds.jpg') center / cover;
+    }
     .result-poster-card h2 {
       color: #fff9e5;
       font-family: Georgia, "Songti SC", serif;
@@ -659,7 +664,9 @@
 </div>
 
 <script src="./src/input.js"></script>
+<script src="./src/chapters.js"></script>
 <script src="./src/journey.js"></script>
+<script src="./src/map-path.js"></script>
 <script src="./src/game-elements.js"></script>
 <script src="./src/stage-transition.js"></script>
 <script src="./src/share-poster.js"></script>
@@ -743,17 +750,41 @@
       if (this.muted || !this.ctx) return;
       this.init();
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(120, now);
-      osc.frequency.exponentialRampToValueAtTime(25, now + 0.45);
-      gain.gain.setValueAtTime(0.35, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.45);
+
+      // Keep the original sawtooth blast character, but center the transient
+      // above sub-bass so it lands as a burst instead of a muffled thump.
+      const blast = this.ctx.createOscillator();
+      const blastGain = this.ctx.createGain();
+      blast.type = 'sawtooth';
+      blast.frequency.setValueAtTime(180, now);
+      blast.frequency.exponentialRampToValueAtTime(72, now + 0.14);
+      blastGain.gain.setValueAtTime(0.34, now);
+      blastGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      blast.connect(blastGain);
+      blastGain.connect(this.ctx.destination);
+      blast.start(now);
+      blast.stop(now + 0.24);
+
+      const burstLength = Math.floor(this.ctx.sampleRate * 0.12);
+      const burstBuffer = this.ctx.createBuffer(1, burstLength, this.ctx.sampleRate);
+      const burstData = burstBuffer.getChannelData(0);
+      for (let index = 0; index < burstLength; index++) {
+        burstData[index] = (Math.random() * 2 - 1) * (1 - index / burstLength);
+      }
+      const burst = this.ctx.createBufferSource();
+      const burstFilter = this.ctx.createBiquadFilter();
+      const burstGain = this.ctx.createGain();
+      burst.buffer = burstBuffer;
+      burstFilter.type = 'lowpass';
+      burstFilter.frequency.setValueAtTime(1300, now);
+      burstFilter.frequency.exponentialRampToValueAtTime(420, now + 0.12);
+      burstGain.gain.setValueAtTime(0.1, now);
+      burstGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      burst.connect(burstFilter);
+      burstFilter.connect(burstGain);
+      burstGain.connect(this.ctx.destination);
+      burst.start(now);
+      burst.stop(now + 0.12);
     }
     playGameOver() {
       if (this.muted || !this.ctx) return;
@@ -803,7 +834,7 @@
     gameStartTime: 0,
     survivalTime: 0,
     highScore: parseInt(localStorage.getItem('frog_game_high') || '0', 10),
-    journey: FrogJourney.createJourney({ totalStages: 2, rowsPerStage: 12 }),
+    journey: FrogJourney.createJourney(FrogChapters.getJourneyOptions()),
     completedRun: null,
     posterObjectUrl: null,
     challengeAddress: '',
@@ -822,7 +853,12 @@
       image: null,
       ready: false
     },
+    stageThreeBackground: {
+      image: null,
+      ready: false
+    },
     stageTransition: null,
+    pendingStage: null,
 
     // 实体集合
     frog: {
@@ -842,6 +878,7 @@
     },
 
     rows: new Map(), // row index -> RowData
+    mapPlan: null, // 本局 canonical route plan（start 时按新 entropy seed 创建）
     crocodiles: [], // 鳄鱼实体
     particles: [],  // 粒子特效
     floatingTexts: [], // 飘字特效
@@ -851,6 +888,7 @@
       this.ctx = this.canvas.getContext('2d');
       this.preloadStageOneBackground();
       this.preloadStageTwoBackground();
+      this.preloadStageThreeBackground();
       this.resize();
       window.addEventListener('resize', () => this.resize());
 
@@ -894,6 +932,18 @@
       image.src = './assets/storm-deep-lake-river.jpg';
     },
 
+    preloadStageThreeBackground() {
+      const image = new Image();
+      image.addEventListener('load', () => {
+        this.stageThreeBackground.image = image;
+        this.stageThreeBackground.ready = true;
+      });
+      image.addEventListener('error', () => {
+        this.stageThreeBackground.ready = false;
+      });
+      image.src = './assets/stage3-sunset-reeds.jpg';
+    },
+
     resize() {
       const container = document.getElementById('canvas-container');
       this.width = container.clientWidth;
@@ -926,8 +976,12 @@
       this.crocodiles = [];
       this.particles = [];
       this.floatingTexts = [];
+      // Every run gets a fresh entropy seed. The seed is runtime randomness;
+      // the planner itself stays a deterministic function of that seed.
+      this.mapPlan = FrogMapPath.createMapPlan(this.createRunSeed());
       this.gameStartTime = Date.now();
-      this.journey = FrogJourney.createJourney({ totalStages: 2, rowsPerStage: 12 });
+      this.journey = FrogJourney.createJourney(FrogChapters.getJourneyOptions());
+      this.pendingStage = null;
 
       // 初始化起始区域 (第 0 行全荷叶安全区)
       const startRow = {
@@ -978,50 +1032,37 @@
       challengePrompt.hidden = false;
     },
 
-    // 智能地图行生成算法（保证前向连通性）
+    // 运行时 entropy：仅用于生成本局 plan 的 seed。planner 模块内部仍然是
+    // 纯确定性 RNG，这里的 Math.random 只作为非安全上下文的 fallback。
+    createRunSeed() {
+      if (
+        window.crypto &&
+        typeof window.crypto.getRandomValues === 'function'
+      ) {
+        return window.crypto.getRandomValues(new Uint32Array(1))[0];
+      }
+      // Non-secure context fallback: mix wall-clock time with one local
+      // random roll into a 32-bit unsigned seed.
+      return (
+        (Date.now() >>> 0) ^ Math.floor(Math.random() * 0x100000000)
+      );
+    },
+
+    // 应用 seed 化的旧版局部地图描述符。运行时只复制可变的格子状态并
+    // 实例化已计划好的鳄鱼，绝不在这里加入第二套随机生成逻辑。
     generateRow(rowIndex) {
       if (this.rows.has(rowIndex)) return;
 
-      const prevRow = this.rows.get(rowIndex - 1);
-      const tiles = new Array(COLS).fill(TILE_EMPTY);
-      const items = new Array(COLS).fill(null);
+      const descriptor = this.mapPlan.getRow(rowIndex);
+      if (!descriptor) {
+        throw new RangeError(
+          `map plan has no row descriptor for row ${rowIndex}`
+        );
+      }
+
+      const tiles = descriptor.tiles.slice();
+      const items = descriptor.items.slice();
       const sinks = new Array(COLS).fill(0);
-
-      // 找出前一行的荷叶位置，确保本行在跳跃范围内（上下或对角）至少有1-2个可达荷叶
-      const validPrevCols = [];
-      if (prevRow) {
-        prevRow.tiles.forEach((t, col) => {
-          if (t !== TILE_EMPTY) validPrevCols.push(col);
-        });
-      }
-
-      // 保证通道：选择一个必连通的主落脚点
-      const anchorCol = validPrevCols.length > 0 
-        ? validPrevCols[Math.floor(Math.random() * validPrevCols.length)]
-        : 3;
-      
-      // 允许左右偏移 1 格作为安全跳板
-      const safeCol = Math.max(0, Math.min(COLS - 1, anchorCol + (Math.floor(Math.random() * 3) - 1)));
-      tiles[safeCol] = Math.random() > 0.4 ? TILE_PAD : TILE_SINKING;
-
-      // 随机填充其他荷叶 (约 35% ~ 50% 密度)
-      for (let c = 0; c < COLS; c++) {
-        if (c !== safeCol && Math.random() < 0.42) {
-          tiles[c] = Math.random() > 0.35 ? TILE_PAD : TILE_SINKING;
-        }
-      }
-
-      // 刷新道具：荷花(+50分/+3秒) 或 补给炸弹
-      for (let c = 0; c < COLS; c++) {
-        if (tiles[c] !== TILE_EMPTY) {
-          const rand = Math.random();
-          if (rand < 0.18) {
-            items[c] = 'FLOWER'; // 莲花
-          } else if (rand < 0.24) {
-            items[c] = 'BOMB_ITEM'; // 补给炸弹
-          }
-        }
-      }
 
       this.rows.set(rowIndex, {
         y: rowIndex,
@@ -1030,21 +1071,12 @@
         sinks
       });
 
-      // 随机生成鳄鱼（在第 3 行以上，且水域比例高时巡逻）
-      if (rowIndex >= 3 && Math.random() < 0.45) {
-        const emptyCols = [];
-        tiles.forEach((t, i) => { if (t === TILE_EMPTY) emptyCols.push(i); });
-        if (emptyCols.length >= 2) {
-          const startCol = emptyCols[Math.floor(Math.random() * emptyCols.length)];
-          this.crocodiles.push({
-            gridY: rowIndex,
-            x: startCol,
-            vx: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6),
-            length: 1.4,
-            warning: false
-          });
-        }
-      }
+      descriptor.crocodiles.forEach((crocodile) => {
+        this.crocodiles.push({
+          ...crocodile,
+          patrol: { ...crocodile.patrol }
+        });
+      });
     },
 
     getScreenX(gridX) {
@@ -1162,8 +1194,9 @@
         this.score += advanced * 10;
         this.addFloatingText(`+${advanced * 10}`, this.frog.visualX, this.frog.visualY - 30, '#52b788');
         
-        // 生成后续地图
-        for (let i = r + 1; i <= r + 12; i++) {
+        // 生成后续地图；plan 只覆盖到 finalRow，越界请求会抛 RangeError。
+        const generateUntil = Math.min(r + 12, this.mapPlan.finalRow);
+        for (let i = r + 1; i <= generateUntil; i++) {
           this.generateRow(i);
         }
       }
@@ -1210,13 +1243,17 @@
 
     updateJourneyProgress() {
       const result = FrogJourney.updateJourney(this.journey, this.maxDistance);
-      this.journey.currentStage = result.currentStage;
 
       if (result.event === 'STAGE_ADVANCED') {
+        const previousStage = this.journey.currentStage;
+        this.pendingStage = result.currentStage;
+        this.journey.currentStage = previousStage;
         this.startStageTransition();
       } else if (result.event === 'JOURNEY_COMPLETED') {
-        this.gameOver('两段旅程完成！', true);
+        this.gameOver('三段旅程完成！', true);
         return true;
+      } else {
+        this.journey.currentStage = result.currentStage;
       }
 
       return false;
@@ -1235,14 +1272,20 @@
     updateStageTransition() {
       const transitionEvent = this.stageTransition.update(performance.now());
       if (transitionEvent.switchStage) {
-        this.journey.currentStage = 2;
+        this.journey.currentStage = this.pendingStage;
         this.updateUI();
       }
       if (transitionEvent.completed) {
         this.stageTransition = null;
+        this.pendingStage = null;
         this.state = 'PLAYING';
         sfx.playScore();
-        this.addFloatingText('第 2 段 · 鳄影深塘', this.width / 2, this.height * 0.38, '#ffb703');
+        this.addFloatingText(
+          `第 ${this.journey.currentStage} 段 · ${this.getCurrentStageName()}`,
+          this.width / 2,
+          this.height * 0.38,
+          '#ffb703'
+        );
       }
     },
 
@@ -1275,7 +1318,7 @@
         highScore: this.highScore,
         rank,
         completed,
-        stageName: this.journey.currentStage === 1 ? '晨雾浅塘' : '暴雨深湖'
+        stageName: this.getCurrentStageName()
       });
 
       document.getElementById('over-badge').innerText = completed ? '旅程完成' : '冒险结束';
@@ -1289,6 +1332,10 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       document.getElementById('result-poster-card').classList.toggle(
         'stage-two',
         this.completedRun.stageName === '暴雨深湖'
+      );
+      document.getElementById('result-poster-card').classList.toggle(
+        'stage-three',
+        this.completedRun.stageName === '暮色芦苇终塘'
       );
       this.prepareResultPosterExport();
 
@@ -1330,9 +1377,7 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
           window.location.pathname,
           this.completedRun.score
         );
-        const posterBackground = this.completedRun.stageName === '晨雾浅塘'
-          ? this.stageOneBackground.image
-          : this.stageTwoBackground.image;
+        const posterBackground = this.getStageBackground(this.journey.currentStage).image;
         FrogSharePoster.renderPoster(
           context,
           this.completedRun,
@@ -1469,11 +1514,11 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       // 鳄鱼巡逻与碰撞判定
       this.crocodiles.forEach(croc => {
         croc.x += croc.vx * dt;
-        if (croc.x <= -0.5) {
-          croc.x = -0.5;
+        if (croc.x <= croc.patrol.minX) {
+          croc.x = croc.patrol.minX;
           croc.vx *= -1;
-        } else if (croc.x >= COLS - 0.5) {
-          croc.x = COLS - 0.5;
+        } else if (croc.x >= croc.patrol.maxX) {
+          croc.x = croc.patrol.maxX;
           croc.vx *= -1;
         }
 
@@ -1565,6 +1610,8 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
         this.drawStageOneMorningBackground(ctx);
       } else if (this.journey.currentStage === 2 && this.stageTwoBackground.ready) {
         this.drawStageTwoStormBackground(ctx);
+      } else if (this.journey.currentStage === 3 && this.stageThreeBackground.ready) {
+        this.drawStageThreeSunsetBackground(ctx);
       } else {
         this.drawProceduralWater(ctx);
       }
@@ -1662,6 +1709,22 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
 
     drawStageTwoStormBackground(ctx) {
       this.drawViewportAnchoredBackground(ctx, this.stageTwoBackground.image);
+    },
+
+    drawStageThreeSunsetBackground(ctx) {
+      this.drawViewportAnchoredBackground(ctx, this.stageThreeBackground.image);
+    },
+
+    getStageBackground(stage) {
+      if (stage === 1) return this.stageOneBackground;
+      if (stage === 2) return this.stageTwoBackground;
+      return this.stageThreeBackground;
+    },
+
+    getCurrentStageName() {
+      if (this.journey.currentStage === 1) return '晨雾浅塘';
+      if (this.journey.currentStage === 2) return '暴雨深湖';
+      return '暮色芦苇终塘';
     },
 
     drawViewportAnchoredBackground(ctx, image) {

@@ -5,12 +5,9 @@
   "scripts": {
     "test:unit": "node --test tests/*.test.cjs",
     "serve": "http-server . -p 4173 -c-1",
-    "test:browser": "playwright test",
-    "test:browser:preview": "MAP_THEME_MODE=preview playwright test",
     "audit:map-themes": "node scripts/map-theme-audit.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.1",
     "ajv": "8.17.1",
     "ajv-formats": "3.0.1",
     "http-server": "14.1.1",

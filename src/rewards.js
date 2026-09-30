@@ -15,16 +15,19 @@
     }
 
     const claimedCheckpointIds = input.claimedCheckpointIds.concat(input.checkpointId);
-    if (chapter.id === 1) {
-      return settleStageOne(input, chapter, claimedCheckpointIds);
+    if (chapter.reward.finalConversion === true) {
+      return settleFinalStage(input, chapter, claimedCheckpointIds);
     }
-    return settleStageTwo(input, chapter, claimedCheckpointIds);
+    return settleStandardStage(input, chapter, claimedCheckpointIds);
   }
 
-  function settleStageOne(input, chapter, claimedCheckpointIds) {
+  function settleStandardStage(input, chapter, claimedCheckpointIds) {
     const nextScore = input.score + chapter.reward.score;
     const nextTimeLeft = input.timeLeft + chapter.reward.time;
-    const nextBombs = Math.min(input.bombs + chapter.reward.bomb, chapter.reward.bombCap);
+    const bombCap = Number.isSafeInteger(chapter.reward.bombCap)
+      ? chapter.reward.bombCap
+      : Number.MAX_SAFE_INTEGER;
+    const nextBombs = Math.min(input.bombs + chapter.reward.bomb, bombCap);
     const grantedBombs = nextBombs - input.bombs;
 
     return {
@@ -55,7 +58,7 @@
     };
   }
 
-  function settleStageTwo(input, chapter, claimedCheckpointIds) {
+  function settleFinalStage(input, chapter, claimedCheckpointIds) {
     const timeUnits = input.timeLeft + chapter.reward.time;
     const bombUnits = input.bombs + chapter.reward.bomb;
     const timeBonus = timeUnits * 10;
@@ -119,7 +122,7 @@
 
   function isValidChapter(chapter) {
     return Boolean(chapter) &&
-      (chapter.id === 1 || chapter.id === 2) &&
+      (chapter.id === 1 || chapter.id === 2 || chapter.id === 3) &&
       chapter.reward &&
       chapter.reward.score === 150 &&
       chapter.reward.time === 8 &&
@@ -128,7 +131,10 @@
       typeof chapter.checkpoint.id === 'string' &&
       (chapter.id === 1
         ? chapter.reward.bombCap === 5 && chapter.reward.finalConversion !== true
-        : chapter.reward.finalConversion === true);
+        : chapter.reward.bombCap === undefined &&
+          (chapter.id === 3
+            ? chapter.reward.finalConversion === true
+            : chapter.reward.finalConversion !== true));
   }
 
   function matchesCheckpoint(input, chapter) {

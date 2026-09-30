@@ -32,9 +32,26 @@ test('stage definitions own the exact row ranges, checkpoint IDs, and reward con
     id: 2,
     name: 'STORM_DEEP_LAKE',
     startRow: 12,
-    endRow: 24,
+    endRow: 23,
     themeId: 'STORM_DEEP_LAKE',
     mapThemePackageId: 'storm-deep-lake',
+    reward: {
+      score: 150,
+      time: 8,
+      bomb: 1
+    },
+    checkpoint: {
+      id: 'stage-2-golden-lotus',
+      row: 24
+    }
+  });
+  assert.deepEqual(getStage(3), {
+    id: 3,
+    name: 'SUNSET_REEDS',
+    startRow: 24,
+    endRow: 36,
+    themeId: 'SUNSET_REEDS',
+    mapThemePackageId: 'sunset-reeds',
     reward: {
       score: 150,
       time: 8,
@@ -42,8 +59,8 @@ test('stage definitions own the exact row ranges, checkpoint IDs, and reward con
       finalConversion: true
     },
     checkpoint: {
-      id: 'stage-2-golden-lotus',
-      row: 24
+      id: 'stage-3-golden-lotus',
+      row: 36
     }
   });
 });
@@ -52,9 +69,11 @@ test('row lookups retain checkpoint row ownership and reject invalid rows safely
   assert.equal(getStageForRow(0).id, 1);
   assert.equal(getStageForRow(11).id, 1);
   assert.equal(getStageForRow(12).id, 2);
-  assert.equal(getStageForRow(24).id, 2);
+  assert.equal(getStageForRow(23).id, 2);
+  assert.equal(getStageForRow(24).id, 3);
+  assert.equal(getStageForRow(36).id, 3);
   assert.equal(getStageForRow(-1), null);
-  assert.equal(getStageForRow(25), null);
+  assert.equal(getStageForRow(37), null);
   assert.equal(getStageForRow(12.5), null);
   assert.equal(getStageForRow('12'), null);
   assert.equal(getStage(0), null);
@@ -66,6 +85,10 @@ test('row lookups retain checkpoint row ownership and reject invalid rows safely
   assert.deepEqual(getCheckpointForRow(24), {
     id: 'stage-2-golden-lotus',
     row: 24
+  });
+  assert.deepEqual(getCheckpointForRow(36), {
+    id: 'stage-3-golden-lotus',
+    row: 36
   });
   assert.equal(getCheckpointForRow(11), null);
   assert.equal(getCheckpointForRow(13), null);
@@ -93,8 +116,18 @@ test('theme mixes use exact normalized transition weights and reject invalid row
     MORNING_MIST: 0,
     STORM_DEEP_LAKE: 1
   });
+  assert.deepEqual(getThemeMixForRow(23), {
+    MORNING_MIST: 0,
+    STORM_DEEP_LAKE: 0.25,
+    SUNSET_REEDS: 0.75
+  });
+  assert.deepEqual(getThemeMixForRow(24), {
+    MORNING_MIST: 0,
+    STORM_DEEP_LAKE: 0,
+    SUNSET_REEDS: 1
+  });
   assert.equal(getThemeMixForRow(-1), null);
-  assert.equal(getThemeMixForRow(25), null);
+  assert.equal(getThemeMixForRow(37), null);
   assert.equal(getThemeMixForRow(Infinity), null);
 });
 
@@ -116,7 +149,7 @@ test('all returned chapter data is deeply immutable and journey options stay com
   assert.equal(stage.reward.score, 150);
   assert.equal(mix.MORNING_MIST, 0.75);
   assert.deepEqual(options, {
-    totalStages: 2,
+    totalStages: 3,
     rowsPerStage: 12
   });
 });

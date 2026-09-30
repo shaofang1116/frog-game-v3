@@ -28,9 +28,26 @@
       id: 2,
       name: 'STORM_DEEP_LAKE',
       startRow: 12,
-      endRow: 24,
+      endRow: 23,
       themeId: 'STORM_DEEP_LAKE',
       mapThemePackageId: 'storm-deep-lake',
+      reward: {
+        score: 150,
+        time: 8,
+        bomb: 1
+      },
+      checkpoint: {
+        id: 'stage-2-golden-lotus',
+        row: 24
+      }
+    }),
+    freeze({
+      id: 3,
+      name: 'SUNSET_REEDS',
+      startRow: 24,
+      endRow: 36,
+      themeId: 'SUNSET_REEDS',
+      mapThemePackageId: 'sunset-reeds',
       reward: {
         score: 150,
         time: 8,
@@ -38,8 +55,8 @@
         finalConversion: true
       },
       checkpoint: {
-        id: 'stage-2-golden-lotus',
-        row: 24
+        id: 'stage-3-golden-lotus',
+        row: 36
       }
     })
   ]);
@@ -74,11 +91,14 @@
     if (row === 10) return THEME_MIXES.firstBlend;
     if (row === 11) return THEME_MIXES.middleBlend;
     if (row === 12) return THEME_MIXES.lastBlend;
-    return THEME_MIXES.storm;
+    if (row <= 21) return THEME_MIXES.storm;
+    if (row === 22) return THEME_MIXES.secondBlend;
+    if (row === 23) return THEME_MIXES.thirdBlend;
+    return THEME_MIXES.sunset;
   }
 
   function isValidRow(row) {
-    return Number.isSafeInteger(row) && row >= 0 && row <= 24;
+    return Number.isSafeInteger(row) && row >= 0 && row <= 36;
   }
 
   function freeze(value) {
@@ -108,6 +128,21 @@
     storm: freeze({
       MORNING_MIST: 0,
       STORM_DEEP_LAKE: 1
+    }),
+    secondBlend: freeze({
+      MORNING_MIST: 0,
+      STORM_DEEP_LAKE: 0.25,
+      SUNSET_REEDS: 0.75
+    }),
+    thirdBlend: freeze({
+      MORNING_MIST: 0,
+      STORM_DEEP_LAKE: 0.25,
+      SUNSET_REEDS: 0.75
+    }),
+    sunset: freeze({
+      MORNING_MIST: 0,
+      STORM_DEEP_LAKE: 0,
+      SUNSET_REEDS: 1
     })
   });
 

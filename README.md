@@ -61,12 +61,9 @@ npm run test:unit
 
 # MapThemePackage 审计工具
 npm run audit:map-themes
-
-# Playwright 配置下的浏览器测试
-npm run test:browser
 ```
 
-当前测试覆盖输入取消与蓄力、阶段旅程、奖励结算、背景资源哈希、莲叶擦除转场、元素绘制及 MapThemePackage 治理链。
+当前自动化测试覆盖输入取消与蓄力、阶段旅程、奖励结算、背景资源哈希、莲叶擦除转场、元素绘制及 MapThemePackage 治理链。Canvas、保存图片和移动端容器交互使用 TRAE 内置浏览器进行实机验收，不要求项目安装浏览器二进制文件。
 
 ## 项目结构
 
@@ -74,7 +71,7 @@ npm run test:browser
 index.html       V3 游戏入口和运行时编排
 src/             输入、旅程、奖励、元素、转场与主题模块
 assets/          晨雾和暴雨本地背景
-tests/           Node 与浏览器验证
+tests/           Node 验证
 schemas/          MapThemePackage JSON Schema
 scripts/          主题验证、导入、审计和证据工具
 ```
