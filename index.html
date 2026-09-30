@@ -196,6 +196,79 @@
       opacity: 0;
       pointer-events: none;
     }
+    html.image-save-mode,
+    body.image-save-mode {
+      touch-action: auto;
+    }
+    .image-save-overlay {
+      z-index: 120;
+      padding: 16px;
+      touch-action: auto;
+    }
+    .image-save-surface {
+      width: min(100%, 420px);
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      touch-action: auto;
+    }
+    .save-image-toolbar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff9e5;
+    }
+    .save-image-toolbar h2 {
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    .save-image-close,
+    .save-image-download {
+      border: 0;
+      background: rgba(247, 242, 216, 0.92);
+      color: #173d39;
+      cursor: pointer;
+    }
+    .save-image-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 24px;
+      line-height: 1;
+    }
+    .save-image {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 150px);
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      user-select: auto;
+      -webkit-user-select: auto;
+      -webkit-touch-callout: default;
+      touch-action: auto;
+    }
+    .save-image-hint {
+      color: #fff9e5;
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .save-image-download {
+      display: none;
+      border-radius: 6px;
+      padding: 8px 11px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .save-image-download {
+        display: inline-flex;
+      }
+    }
     .card {
       background: #ffffff;
       width: 100%;
@@ -551,6 +624,19 @@
     </div>
   </div>
 
+  <!-- 保存图片层：不重复结算信息，只保留原始 PNG 以便长按保存。 -->
+  <div class="modal-overlay image-save-overlay hidden" id="image-save-modal" role="dialog" aria-modal="true" aria-labelledby="image-save-title" hidden>
+    <div class="image-save-surface">
+      <div class="save-image-toolbar">
+        <h2 id="image-save-title">保存战绩卡</h2>
+        <button class="save-image-close" id="btn-close-image-save" type="button" aria-label="关闭图片保存">×</button>
+      </div>
+      <img class="save-image" id="save-image" alt="荷塘大冒险战绩卡图片">
+      <p class="save-image-hint">长按图片，选择“保存图片”</p>
+      <button class="save-image-download" id="btn-download-png" type="button" hidden>下载 PNG</button>
+    </div>
+  </div>
+
   <!-- 关于/作者独立作品展位弹窗 -->
   <div class="modal-overlay hidden" id="author-modal">
     <div class="card">
@@ -721,6 +807,7 @@
     completedRun: null,
     posterObjectUrl: null,
     challengeAddress: '',
+    saveImageTrigger: null,
     posterGenerationId: 0,
 
     cameraY: 0,
@@ -1264,7 +1351,7 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
           this.challengeAddress = challengeAddress;
           document.getElementById('btn-copy-challenge').disabled = false;
           btnDownloadPoster.disabled = false;
-          btnDownloadPoster.innerText = '下载战绩卡';
+          btnDownloadPoster.innerText = '保存战绩卡';
         }, 'image/png');
       } catch (error) {
         failGeneration();
@@ -1276,6 +1363,7 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       const btnDownloadPoster = document.getElementById('btn-download-poster');
       const challengeAddressFallback = document.getElementById('challenge-address-fallback');
 
+      this.closeImageSaveLayer(false);
       if (invalidateGeneration) this.posterGenerationId++;
       if (this.posterObjectUrl) {
         URL.revokeObjectURL(this.posterObjectUrl);
@@ -1287,6 +1375,47 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       btnCopyChallenge.disabled = true;
       btnDownloadPoster.disabled = true;
       btnDownloadPoster.innerText = '战绩卡准备中…';
+    },
+
+    openImageSaveLayer(trigger = document.activeElement) {
+      const imageSaveModal = document.getElementById('image-save-modal');
+      const saveImage = document.getElementById('save-image');
+      const resultPosterStatus = document.getElementById('result-poster-status');
+      const btnDownloadPng = document.getElementById('btn-download-png');
+
+      if (!this.posterObjectUrl) {
+        resultPosterStatus.innerText = '战绩卡尚未准备好，请稍后再试。';
+        return;
+      }
+
+      this.saveImageTrigger = trigger;
+      saveImage.onerror = () => {
+        this.closeImageSaveLayer();
+        resultPosterStatus.innerText = '战绩卡图片加载失败，请重开后再试。';
+      };
+      saveImage.src = this.posterObjectUrl;
+      document.documentElement.classList.add('image-save-mode');
+      document.body.classList.add('image-save-mode');
+      btnDownloadPng.hidden = false;
+      imageSaveModal.hidden = false;
+      imageSaveModal.classList.remove('hidden');
+      document.getElementById('btn-close-image-save').focus();
+    },
+
+    closeImageSaveLayer(restoreFocus = true) {
+      const imageSaveModal = document.getElementById('image-save-modal');
+      const saveImage = document.getElementById('save-image');
+      const btnDownloadPng = document.getElementById('btn-download-png');
+
+      imageSaveModal.hidden = true;
+      imageSaveModal.classList.add('hidden');
+      document.documentElement.classList.remove('image-save-mode');
+      document.body.classList.remove('image-save-mode');
+      saveImage.onerror = null;
+      saveImage.removeAttribute('src');
+      btnDownloadPng.hidden = true;
+      if (restoreFocus) this.saveImageTrigger?.focus();
+      this.saveImageTrigger = null;
     },
 
     update(dt) {
@@ -1669,6 +1798,11 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
 
       // 键盘控制 (PC)
       window.addEventListener('keydown', (e) => {
+        const imageSaveModal = document.getElementById('image-save-modal');
+        if (!imageSaveModal.hidden) {
+          if (e.key === 'Escape') this.closeImageSaveLayer();
+          return;
+        }
         if (e.repeat) return;
         const key = e.key.toLowerCase();
         const jump = FrogInput.getKeyboardJump(e);
@@ -1738,6 +1872,12 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
         });
       });
       document.getElementById('btn-download-poster').addEventListener('click', () => {
+        this.openImageSaveLayer();
+      });
+      document.getElementById('btn-close-image-save').addEventListener('click', () => {
+        this.closeImageSaveLayer();
+      });
+      document.getElementById('btn-download-png').addEventListener('click', () => {
         if (!this.posterObjectUrl) return;
         const downloadLink = document.createElement('a');
         downloadLink.href = this.posterObjectUrl;

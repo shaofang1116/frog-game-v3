@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   await installLocalPosterStubs(page);
 });
 
-test('renders the result card and prepares its local PNG download', async ({ page }) => {
+test('opens the prepared PNG in a long-press-safe save layer', async ({ page }) => {
   await page.goto('/');
   await completeRun(page);
 
@@ -39,7 +39,19 @@ test('renders the result card and prepares its local PNG download', async ({ pag
     /morning-mist-pond\.jpg/
   );
   await expect(page.locator('.result-metric')).toHaveCount(3);
-  await expect(page.getByRole('button', { name: '下载战绩卡' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '保存战绩卡' })).toBeEnabled();
+  await page.getByRole('button', { name: '保存战绩卡' }).click();
+  await expect(page.locator('#image-save-modal')).toBeVisible();
+  const saveImage = page.locator('#save-image');
+  await expect(saveImage).toHaveAttribute('src', /^blob:/);
+  await expect.poll(() => saveImage.evaluate((image) => ({
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+    touchAction: getComputedStyle(image).touchAction
+  }))).toEqual({ width: 1080, height: 1440, touchAction: 'auto' });
+  await page.getByRole('button', { name: '关闭图片保存' }).click();
+  await expect(page.locator('#image-save-modal')).toBeHidden();
+  await expect(page.locator('#result-poster-card')).toBeVisible();
   await page.getByRole('button', { name: '复制挑战地址' }).click();
   await expect(page.locator('#result-poster-status')).toContainText('地址已复制');
   await expect.poll(() => page.evaluate(() => window.__posterClipboardWrites)).toEqual([

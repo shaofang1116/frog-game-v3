@@ -166,6 +166,39 @@ test('the unified result card exports a local PNG and retains copy controls', ()
   assert.doesNotMatch(html, /\balert\s*\(/);
 });
 
+test('saving a result image opens a long-press-safe image layer without replacing the result card', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const closeImageSaveLayer = html.match(
+    /closeImageSaveLayer\([^)]*\) \{([\s\S]*?)\n    \},\n\n    update/
+  );
+
+  assert.match(
+    html,
+    /<div class="modal-overlay image-save-overlay hidden" id="image-save-modal" role="dialog" aria-modal="true" aria-labelledby="image-save-title" hidden>/
+  );
+  assert.match(html, /<img class="save-image" id="save-image" alt="荷塘大冒险战绩卡图片">/);
+  assert.match(html, /id="btn-close-image-save"[^>]*aria-label="关闭图片保存"/);
+  assert.match(html, /id="btn-download-png"[^>]*hidden/);
+  assert.match(html, /body\.image-save-mode\s*\{[\s\S]*?touch-action:\s*auto/);
+  assert.match(html, /\.save-image\s*\{[\s\S]*?-webkit-touch-callout:\s*default/);
+  assert.match(html, /\.save-image\s*\{[\s\S]*?user-select:\s*auto/);
+  assert.match(html, /\.save-image\s*\{[\s\S]*?touch-action:\s*auto/);
+  assert.match(html, /btnDownloadPoster\.innerText = '保存战绩卡';/);
+  assert.match(
+    html,
+    /document\.getElementById\('btn-download-poster'\)\.addEventListener\('click', \(\) => \{\s*this\.openImageSaveLayer\(\);/
+  );
+  assert.match(
+    html,
+    /openImageSaveLayer\([^)]*\) \{[\s\S]*?saveImage\.src = this\.posterObjectUrl;[\s\S]*?document\.body\.classList\.add\('image-save-mode'\);[\s\S]*?btnDownloadPng\.hidden = false;[\s\S]*?imageSaveModal\.hidden = false;/
+  );
+  assert.ok(closeImageSaveLayer);
+  assert.match(closeImageSaveLayer[1], /document\.body\.classList\.remove\('image-save-mode'\);/);
+  assert.match(closeImageSaveLayer[1], /saveImage\.removeAttribute\('src'\);/);
+  assert.match(closeImageSaveLayer[1], /btnDownloadPng\.hidden = true;/);
+  assert.doesNotMatch(closeImageSaveLayer[1], /URL\.revokeObjectURL/);
+});
+
 test('clipboard fallback reveals and selects the challenge address for manual copying', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
 
