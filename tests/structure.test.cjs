@@ -38,6 +38,145 @@ test('the V3 root game loads input and journey policies without the legacy charg
   assert.doesNotMatch(html, /chargeMode/);
 });
 
+test('the V3 root loads the local poster helper before its inline runtime', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const helperIndex = html.indexOf('<script src="./src/share-poster.js"></script>');
+  const runtimeIndex = html.indexOf('<script>\n/**');
+
+  assert.ok(helperIndex >= 0);
+  assert.ok(runtimeIndex > helperIndex);
+});
+
+test('the result card uses direct result-card actions without its retired feature showcase', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.doesNotMatch(html, /💡 创意与技术特性：/);
+  assert.doesNotMatch(html, /id="btn-copy-share"/);
+  assert.match(
+    html,
+    /<button class="btn-main" id="btn-download-poster" type="button" disabled>战绩卡准备中…<\/button>/
+  );
+  assert.match(
+    html,
+    /<button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址<\/button>/
+  );
+  assert.match(html, /id="over-badge"/);
+  assert.match(html, /id="over-title"/);
+  assert.match(html, /id="over-rank"/);
+  for (const metricId of ['res-score', 'res-distance', 'res-time', 'res-best']) {
+    assert.match(html, new RegExp(`id="${metricId}"`));
+  }
+});
+
+test('the result modal is the only visible battle-card surface', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.match(
+    html,
+    /<div class="modal-overlay hidden" id="gameover-modal">/
+  );
+  assert.match(html, /<div class="card result-poster-card" id="result-poster-card">/);
+  assert.match(html, /id="result-environment"/);
+  assert.match(html, /class="result-score-value"><span id="res-score">0<\/span><small> 分<\/small>/);
+  assert.match(html, /id="btn-copy-challenge"[^>]*disabled/);
+  assert.match(html, /id="btn-download-poster"[^>]*disabled/);
+  assert.match(html, /id="result-poster-status"[^>]*aria-live="polite"/);
+  assert.match(html, /\.result-poster-card\s*\{[\s\S]*?url\('\.\/assets\/morning-mist-pond\.jpg'\)/);
+  assert.match(html, /\.result-poster-card\.stage-two\s*\{[\s\S]*?url\('\.\/assets\/storm-deep-lake-river\.jpg'\)/);
+  assert.match(html, /\.result-poster-card\s*\{[\s\S]*?overflow-y:\s*auto/);
+  assert.doesNotMatch(html, /id="poster-modal"/);
+  assert.doesNotMatch(html, /id="btn-generate-poster"/);
+});
+
+test('the start modal has a dismissible challenge prompt backed by the poster parser', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.match(html, /id="challenge-prompt"[^>]*hidden/);
+  assert.match(html, /id="btn-dismiss-challenge"/);
+  assert.match(html, /FrogSharePoster\.parseChallengeScore\(window\.location\.search\)/);
+  assert.match(html, /有人打出 \$\{challengeScore\} 分，来试试超过它。/);
+  assert.match(
+    html,
+    /btnDismissChallenge\.addEventListener\('click', \(\) => \{\s*challengePrompt\.hidden = true;\s*\}\);/
+  );
+});
+
+test('game over owns one immutable completed run and prepares its result-card export', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const releaseResultPosterExport = html.match(
+    /releaseResultPosterExport\(invalidateGeneration = true\) \{([\s\S]*?)\n    \},\n\n    update/
+  );
+
+  assert.match(html, /completedRun:\s*null/);
+  assert.match(html, /posterObjectUrl:\s*null/);
+  assert.match(html, /challengeAddress:\s*''/);
+  assert.match(html, /this\.completedRun = null;/);
+  assert.match(html, /this\.posterObjectUrl = null;/);
+  assert.match(
+    html,
+    /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*stageName: this\.journey\.currentStage === 1 \? '晨雾浅塘' : '暴雨深湖'\s*\}\);/
+  );
+  assert.match(html, /document\.getElementById\('res-score'\)\.innerText = this\.completedRun\.score;/);
+  assert.match(html, /document\.getElementById\('res-distance'\)\.innerText = `\$\{this\.completedRun\.distance\}m`;/);
+  assert.doesNotMatch(
+    html,
+    /this\.completedRun = Object\.freeze\(\{[\s\S]*?\bmaxDistance:/
+  );
+  assert.match(html, /this\.prepareResultPosterExport\(\);/);
+  assert.match(html, /result-poster-card'\)\.classList\.toggle\(\s*'stage-two'/);
+  assert.ok(releaseResultPosterExport);
+  assert.match(releaseResultPosterExport[1], /URL\.revokeObjectURL\(this\.posterObjectUrl\);/);
+  assert.match(releaseResultPosterExport[1], /this\.posterObjectUrl = null;/);
+  assert.doesNotMatch(releaseResultPosterExport[1], /(?:gameoverModal|this\.state)/);
+  assert.match(
+    html,
+    /start\(\) \{\s*sfx\.init\(\);\s*this\.releaseResultPosterExport\(\);/
+  );
+});
+
+test('the unified result card exports a local PNG and retains copy controls', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const prepareResultPosterExport = html.match(
+    /prepareResultPosterExport\(\) \{([\s\S]*?)\n    \},\n\n    releaseResultPosterExport/
+  );
+
+  assert.ok(prepareResultPosterExport);
+  assert.match(prepareResultPosterExport[1], /document\.createElement\('canvas'\)/);
+  assert.match(prepareResultPosterExport[1], /FrogSharePoster\.renderPoster\(/);
+  assert.match(prepareResultPosterExport[1], /canvas\.toBlob\([\s\S]*?'image\/png'/);
+  assert.match(
+    prepareResultPosterExport[1],
+    /FrogSharePoster\.createChallengeUrl\(\s*window\.location\.origin,\s*window\.location\.pathname,\s*this\.completedRun\.score\s*\)/
+  );
+  assert.match(
+    prepareResultPosterExport[1],
+    /const posterBackground = this\.completedRun\.stageName === '晨雾浅塘'[\s\S]*?FrogSharePoster\.renderPoster\(\s*context,\s*this\.completedRun,\s*challengeAddress,\s*posterBackground\s*\)/
+  );
+  assert.match(
+    prepareResultPosterExport[1],
+    /this\.releaseResultPosterExport\(false\);[\s\S]*?this\.posterObjectUrl = URL\.createObjectURL\(blob\);/
+  );
+  assert.match(
+    html,
+    /navigator\.clipboard && typeof navigator\.clipboard\.writeText === 'function'/
+  );
+  assert.match(html, /navigator\.clipboard\.writeText\(this\.challengeAddress\)/);
+  assert.match(html, /请长按或选择地址后复制。/);
+  assert.match(html, /download = '荷塘大冒险-战绩卡\.png'/);
+  assert.doesNotMatch(html, /\balert\s*\(/);
+});
+
+test('the root contains no prohibited social SDK, QR, invite, analytics, or remote URL integration', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.doesNotMatch(html, /\bjweixin\b/i);
+  assert.doesNotMatch(html, /\bwx\./i);
+  assert.doesNotMatch(html, /\b(?:qrcode|QRCode)\b/);
+  assert.doesNotMatch(html, /\binvite\b/i);
+  assert.doesNotMatch(html, /\b(?:analytics|ga\(|gtag\()\b/i);
+  assert.doesNotMatch(html, /https?:\/\//i);
+});
+
 test('the V3 root game delegates protected element drawing to the canonical library', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
 

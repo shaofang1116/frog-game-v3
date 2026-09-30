@@ -290,6 +290,123 @@
     }
     .btn-secondary:active { background: #e2e8f0; }
 
+    .challenge-prompt {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff7d6;
+      color: #7c4a03;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .challenge-prompt button {
+      margin-top: 8px;
+      border: 0;
+      background: transparent;
+      color: #7c4a03;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .result-poster-card {
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      color: #f7f2d8;
+      background:
+        linear-gradient(180deg, rgba(3, 18, 26, 0.2), rgba(2, 12, 18, 0.94)),
+        url('./assets/morning-mist-pond.jpg') center / cover;
+      border: 1px solid rgba(255, 235, 158, 0.35);
+    }
+    .result-poster-card.stage-two {
+      background:
+        linear-gradient(180deg, rgba(3, 18, 26, 0.18), rgba(2, 12, 18, 0.94)),
+        url('./assets/storm-deep-lake-river.jpg') center / cover;
+    }
+    .result-poster-card h2 {
+      color: #fff9e5;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 30px;
+      margin-bottom: 2px;
+    }
+    .result-environment {
+      color: #b8d9cf;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .result-poster-card .card-badge {
+      background: rgba(255, 190, 55, 0.94);
+      color: #183f3b;
+    }
+    .result-poster-card .card-rank {
+      color: #f7f2d8;
+      margin: 12px 0 6px;
+    }
+    .result-score {
+      margin: 10px 0 14px;
+      padding: 15px 12px 12px;
+      background: rgba(4, 27, 34, 0.76);
+      border-top: 2px solid #ffbe37;
+    }
+    .result-score-label {
+      display: block;
+      color: #a7d2c5;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .result-score-value {
+      display: block;
+      color: #fff9e5;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .result-score-value small {
+      color: #ffbe37;
+      font-family: inherit;
+      font-size: 18px;
+    }
+    .result-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .result-metric {
+      min-width: 0;
+      padding: 10px 5px;
+      background: rgba(4, 27, 34, 0.68);
+    }
+    .result-metric .label {
+      color: #a7d2c5;
+      font-size: 10px;
+    }
+    .result-metric .value {
+      color: #fff9e5;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .result-poster-card .btn-main {
+      background: linear-gradient(135deg, #ffbe37, #e17b17);
+      color: #173d39;
+    }
+    .result-poster-card .btn-secondary {
+      background: rgba(247, 242, 216, 0.92);
+      color: #173d39;
+      border-color: transparent;
+    }
+    .result-poster-card .btn-secondary:disabled {
+      opacity: 0.56;
+      cursor: wait;
+    }
+    .result-poster-card .result-status {
+      min-height: 1.4em;
+      color: #cde8dc;
+      font-size: 12px;
+      margin-top: 8px;
+    }
     /* 浮动操作提示 (PC) */
     .pc-tips {
       font-size: 11px;
@@ -308,6 +425,11 @@
       .stat-pill {
         padding: 4px 6px;
         font-size: 12px;
+      }
+    }
+    @media (max-height: 640px) {
+      .result-poster-card {
+        padding: 16px;
       }
     }
   </style>
@@ -366,6 +488,11 @@
         5. 长按方向键预览落点，松开即可双格越水飞跳！
       </div>
 
+      <div class="challenge-prompt" id="challenge-prompt" hidden>
+        <span id="challenge-message"></span>
+        <button type="button" id="btn-dismiss-challenge">知道了</button>
+      </div>
+
       <div class="btn-group">
         <button class="btn-main" id="btn-start-game">🚀 开始冒险</button>
       </div>
@@ -373,44 +500,37 @@
     </div>
   </div>
 
-  <!-- 结算与营销分享弹窗 -->
+  <!-- 结算战绩卡 -->
   <div class="modal-overlay hidden" id="gameover-modal">
-    <div class="card">
+    <div class="card result-poster-card" id="result-poster-card">
       <div class="card-badge" id="over-badge">冒险结束</div>
+      <div class="result-environment" id="result-environment">晨雾浅塘</div>
       <h2 id="over-title">落入池塘！</h2>
       <div class="card-rank" id="over-rank">获得称号：荷塘小跳蛙</div>
-
-      <div class="score-banner">
-        <div class="score-item">
-          <div class="label">本局积分</div>
-          <div class="value" id="res-score">0</div>
-        </div>
-        <div class="score-item">
+      <div class="result-score">
+        <span class="result-score-label">本局积分</span>
+        <strong class="result-score-value"><span id="res-score">0</span><small> 分</small></strong>
+      </div>
+      <div class="result-metrics">
+        <div class="result-metric">
           <div class="label">最远前行</div>
           <div class="value" id="res-distance">0m</div>
         </div>
-        <div class="score-item">
+        <div class="result-metric">
           <div class="label">存活时间</div>
           <div class="value" id="res-time">0s</div>
         </div>
-        <div class="score-item">
+        <div class="result-metric">
           <div class="label">历史最高</div>
           <div class="value" id="res-best">0</div>
         </div>
       </div>
-
-      <!-- 营销推广/独立作品展示位 -->
-      <div class="showcase-banner">
-        <strong>💡 创意与技术特性：</strong><br>
-        • 零外部依赖，极速秒开（<50KB 纯单文件打包）<br>
-        • Web Audio 纯代码合成动态音效<br>
-        • 支持微信内分享、触屏与键盘全端自适应
-      </div>
-
       <div class="btn-group">
-        <button class="btn-main" id="btn-restart">🔄 再来一局</button>
-        <button class="btn-secondary" id="btn-copy-share">📋 复制战绩分享卡片</button>
+        <button class="btn-main" id="btn-download-poster" type="button" disabled>战绩卡准备中…</button>
+        <button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址</button>
+        <button class="btn-secondary" id="btn-restart">🔄 再来一局</button>
       </div>
+      <p class="result-status" id="result-poster-status" aria-live="polite"></p>
     </div>
   </div>
 
@@ -439,6 +559,7 @@
 <script src="./src/journey.js"></script>
 <script src="./src/game-elements.js"></script>
 <script src="./src/stage-transition.js"></script>
+<script src="./src/share-poster.js"></script>
 <script>
 /**
  * 荷塘大冒险 (Frog Pond Adventure)
@@ -580,6 +701,10 @@
     survivalTime: 0,
     highScore: parseInt(localStorage.getItem('frog_game_high') || '0', 10),
     journey: FrogJourney.createJourney({ totalStages: 2, rowsPerStage: 12 }),
+    completedRun: null,
+    posterObjectUrl: null,
+    challengeAddress: '',
+    posterGenerationId: 0,
 
     cameraY: 0,
     targetCameraY: 0,
@@ -627,6 +752,7 @@
 
       this.bindControls();
       this.updateUI();
+      this.showChallengePrompt();
 
       // 启动主循环
       let lastTime = performance.now();
@@ -679,9 +805,12 @@
 
     start() {
       sfx.init();
+      this.releaseResultPosterExport();
       this.state = 'PLAYING';
       this.score = 0;
       this.maxDistance = 0;
+      this.completedRun = null;
+      document.getElementById('result-poster-status').innerText = '';
       this.timeLeft = 30;
       this.bombs = 2;
       this.cameraY = 0;
@@ -733,6 +862,16 @@
       document.getElementById('start-modal').classList.add('hidden');
       document.getElementById('gameover-modal').classList.add('hidden');
       this.updateUI();
+    },
+
+    showChallengePrompt() {
+      const challengeScore = FrogSharePoster.parseChallengeScore(window.location.search);
+      if (challengeScore === null) return;
+
+      const challengePrompt = document.getElementById('challenge-prompt');
+      document.getElementById('challenge-message').innerText =
+        `有人打出 ${challengeScore} 分，来试试超过它。`;
+      challengePrompt.hidden = false;
     },
 
     // 智能地图行生成算法（保证前向连通性）
@@ -1019,23 +1158,115 @@
         localStorage.setItem('frog_game_high', this.highScore.toString());
       }
 
-      // 计算荣誉称号 (营销裂变点)
+      // 结算时确定本局唯一可分享成绩。
       let rank = '荷塘萌新蛙';
       if (this.score >= 500) rank = '👑 荷塘绝影蛙王';
       else if (this.score >= 300) rank = '⚡ 凌波微步·飞天蛙';
       else if (this.score >= 150) rank = '🌿 敏捷跳跳达人';
 
+      this.completedRun = Object.freeze({
+        score: this.score,
+        distance: this.maxDistance,
+        survivalTime: this.survivalTime,
+        highScore: this.highScore,
+        rank,
+        completed,
+        stageName: this.journey.currentStage === 1 ? '晨雾浅塘' : '暴雨深湖'
+      });
+
       document.getElementById('over-badge').innerText = completed ? '旅程完成' : '冒险结束';
       document.getElementById('over-title').innerText = reason;
-      document.getElementById('over-rank').innerText = `获得称号：${rank}`;
-      document.getElementById('res-score').innerText = this.score;
-      document.getElementById('res-distance').innerText = `${this.maxDistance}m`;
-      document.getElementById('res-time').innerText = `${this.survivalTime}s`;
-      document.getElementById('res-best').innerText = this.highScore;
+document.getElementById('over-rank').innerText = `获得称号：${this.completedRun.rank}`;
+      document.getElementById('res-score').innerText = this.completedRun.score;
+      document.getElementById('res-distance').innerText = `${this.completedRun.distance}m`;
+      document.getElementById('res-time').innerText = `${this.completedRun.survivalTime}s`;
+      document.getElementById('res-best').innerText = this.completedRun.highScore;
+      document.getElementById('result-environment').innerText = this.completedRun.stageName;
+      document.getElementById('result-poster-card').classList.toggle(
+        'stage-two',
+        this.completedRun.stageName === '暴雨深湖'
+      );
+      this.prepareResultPosterExport();
 
       setTimeout(() => {
         document.getElementById('gameover-modal').classList.remove('hidden');
       }, 400);
+    },
+
+    prepareResultPosterExport() {
+      const btnDownloadPoster = document.getElementById('btn-download-poster');
+      const resultPosterStatus = document.getElementById('result-poster-status');
+
+      if (!this.completedRun) {
+        resultPosterStatus.innerText = '本局战绩尚未准备好，请再试一次。';
+        return;
+      }
+
+      const generationId = ++this.posterGenerationId;
+      btnDownloadPoster.disabled = true;
+      btnDownloadPoster.innerText = '战绩卡准备中…';
+      resultPosterStatus.innerText = '';
+
+      const failGeneration = () => {
+        if (generationId !== this.posterGenerationId) return;
+        btnDownloadPoster.disabled = true;
+        btnDownloadPoster.innerText = '战绩卡生成失败';
+        resultPosterStatus.innerText = '战绩卡生成失败，请重开后再试。';
+      };
+
+      try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context || typeof canvas.toBlob !== 'function') {
+          throw new Error('Canvas PNG export is unavailable.');
+        }
+
+        const challengeAddress = FrogSharePoster.createChallengeUrl(
+          window.location.origin,
+          window.location.pathname,
+          this.completedRun.score
+        );
+        const posterBackground = this.completedRun.stageName === '晨雾浅塘'
+          ? this.stageOneBackground.image
+          : this.stageTwoBackground.image;
+        FrogSharePoster.renderPoster(
+          context,
+          this.completedRun,
+          challengeAddress,
+          posterBackground
+        );
+        canvas.toBlob((blob) => {
+          if (generationId !== this.posterGenerationId) return;
+          if (!blob) {
+            failGeneration();
+            return;
+          }
+
+          this.releaseResultPosterExport(false);
+          this.posterObjectUrl = URL.createObjectURL(blob);
+          this.challengeAddress = challengeAddress;
+          document.getElementById('btn-copy-challenge').disabled = false;
+          btnDownloadPoster.disabled = false;
+          btnDownloadPoster.innerText = '下载战绩卡';
+        }, 'image/png');
+      } catch (error) {
+        failGeneration();
+      }
+    },
+
+    releaseResultPosterExport(invalidateGeneration = true) {
+      const btnCopyChallenge = document.getElementById('btn-copy-challenge');
+      const btnDownloadPoster = document.getElementById('btn-download-poster');
+
+      if (invalidateGeneration) this.posterGenerationId++;
+      if (this.posterObjectUrl) {
+        URL.revokeObjectURL(this.posterObjectUrl);
+        this.posterObjectUrl = null;
+      }
+      this.challengeAddress = '';
+      btnCopyChallenge.disabled = true;
+      btnDownloadPoster.disabled = true;
+      btnDownloadPoster.innerText = '战绩卡准备中…';
     },
 
     update(dt) {
@@ -1463,6 +1694,33 @@
       // 按钮交互
       document.getElementById('btn-start-game').addEventListener('click', () => this.start());
       document.getElementById('btn-restart').addEventListener('click', () => this.start());
+      const btnCopyChallenge = document.getElementById('btn-copy-challenge');
+      const resultPosterStatus = document.getElementById('result-poster-status');
+      btnCopyChallenge.addEventListener('click', () => {
+        if (!this.challengeAddress) return;
+        if (!(navigator.clipboard && typeof navigator.clipboard.writeText === 'function')) {
+          resultPosterStatus.innerText = '请长按或选择地址后复制。';
+          return;
+        }
+
+        navigator.clipboard.writeText(this.challengeAddress).then(() => {
+          resultPosterStatus.innerText = '地址已复制，可作为文本发送；好友可粘贴到浏览器打开。';
+        }).catch(() => {
+          resultPosterStatus.innerText = '请长按或选择地址后复制。';
+        });
+      });
+      document.getElementById('btn-download-poster').addEventListener('click', () => {
+        if (!this.posterObjectUrl) return;
+        const downloadLink = document.createElement('a');
+        downloadLink.href = this.posterObjectUrl;
+        downloadLink.download = '荷塘大冒险-战绩卡.png';
+        downloadLink.click();
+      });
+      const challengePrompt = document.getElementById('challenge-prompt');
+      const btnDismissChallenge = document.getElementById('btn-dismiss-challenge');
+      btnDismissChallenge.addEventListener('click', () => {
+        challengePrompt.hidden = true;
+      });
       
       // 音频开关
       const btnAudio = document.getElementById('btn-audio-toggle');
@@ -1477,18 +1735,6 @@
       });
       document.getElementById('btn-close-author').addEventListener('click', () => {
         document.getElementById('author-modal').classList.add('hidden');
-      });
-
-      // 战绩分享复制
-      document.getElementById('btn-copy-share').addEventListener('click', () => {
-        const text = `🐸 我在《荷塘大冒险》中跳出了 ${this.score} 分，勇闯 ${this.maxDistance} 米！获得称号【${document.getElementById('over-rank').innerText}】！快来挑战吧！`;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(text).then(() => {
-            alert('🎉 战绩文案已复制到剪贴板，可直接粘贴分享！');
-          });
-        } else {
-          alert(text);
-        }
       });
     }
   };
