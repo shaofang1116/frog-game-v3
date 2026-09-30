@@ -161,9 +161,34 @@ test('the unified result card exports a local PNG and retains copy controls', ()
     /navigator\.clipboard && typeof navigator\.clipboard\.writeText === 'function'/
   );
   assert.match(html, /navigator\.clipboard\.writeText\(this\.challengeAddress\)/);
-  assert.match(html, /请长按或选择地址后复制。/);
+  assert.match(html, /地址已选中，可长按或使用系统复制。/);
   assert.match(html, /download = '荷塘大冒险-战绩卡\.png'/);
   assert.doesNotMatch(html, /\balert\s*\(/);
+});
+
+test('clipboard fallback reveals and selects the challenge address for manual copying', () => {
+  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+
+  assert.match(
+    html,
+    /<textarea class="challenge-address-fallback" id="challenge-address-fallback" readonly hidden><\/textarea>/
+  );
+  assert.match(
+    html,
+    /const showChallengeAddressFallback = \(\) => \{[\s\S]*?challengeAddressFallback\.value = this\.challengeAddress;[\s\S]*?challengeAddressFallback\.hidden = false;[\s\S]*?challengeAddressFallback\.focus\(\);[\s\S]*?challengeAddressFallback\.select\(\);/
+  );
+  assert.match(
+    html,
+    /if \(!\(navigator\.clipboard && typeof navigator\.clipboard\.writeText === 'function'\)\) \{\s*showChallengeAddressFallback\(\);/
+  );
+  assert.match(
+    html,
+    /\.catch\(\(\) => \{\s*showChallengeAddressFallback\(\);/
+  );
+  assert.match(
+    html,
+    /challengeAddressFallback\.hidden = true;[\s\S]*?challengeAddressFallback\.value = ''/
+  );
 });
 
 test('the root contains no prohibited social SDK, QR, invite, analytics, or remote URL integration', () => {

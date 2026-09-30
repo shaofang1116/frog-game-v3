@@ -407,6 +407,22 @@
       font-size: 12px;
       margin-top: 8px;
     }
+    .challenge-address-fallback {
+      width: 100%;
+      min-height: 58px;
+      margin-top: 8px;
+      padding: 9px 10px;
+      resize: none;
+      border: 1px solid rgba(247, 242, 216, 0.5);
+      border-radius: 6px;
+      background: rgba(2, 12, 18, 0.72);
+      color: #fff9e5;
+      font-size: 12px;
+      line-height: 1.4;
+      user-select: text;
+      -webkit-user-select: text;
+      -webkit-touch-callout: default;
+    }
     /* 浮动操作提示 (PC) */
     .pc-tips {
       font-size: 11px;
@@ -531,6 +547,7 @@
         <button class="btn-secondary" id="btn-restart">🔄 再来一局</button>
       </div>
       <p class="result-status" id="result-poster-status" aria-live="polite"></p>
+      <textarea class="challenge-address-fallback" id="challenge-address-fallback" readonly hidden></textarea>
     </div>
   </div>
 
@@ -1257,6 +1274,7 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
     releaseResultPosterExport(invalidateGeneration = true) {
       const btnCopyChallenge = document.getElementById('btn-copy-challenge');
       const btnDownloadPoster = document.getElementById('btn-download-poster');
+      const challengeAddressFallback = document.getElementById('challenge-address-fallback');
 
       if (invalidateGeneration) this.posterGenerationId++;
       if (this.posterObjectUrl) {
@@ -1264,6 +1282,8 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
         this.posterObjectUrl = null;
       }
       this.challengeAddress = '';
+      challengeAddressFallback.hidden = true;
+      challengeAddressFallback.value = '';
       btnCopyChallenge.disabled = true;
       btnDownloadPoster.disabled = true;
       btnDownloadPoster.innerText = '战绩卡准备中…';
@@ -1696,17 +1716,25 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       document.getElementById('btn-restart').addEventListener('click', () => this.start());
       const btnCopyChallenge = document.getElementById('btn-copy-challenge');
       const resultPosterStatus = document.getElementById('result-poster-status');
+      const challengeAddressFallback = document.getElementById('challenge-address-fallback');
+      const showChallengeAddressFallback = () => {
+        challengeAddressFallback.value = this.challengeAddress;
+        challengeAddressFallback.hidden = false;
+        challengeAddressFallback.focus();
+        challengeAddressFallback.select();
+        resultPosterStatus.innerText = '地址已选中，可长按或使用系统复制。';
+      };
       btnCopyChallenge.addEventListener('click', () => {
         if (!this.challengeAddress) return;
         if (!(navigator.clipboard && typeof navigator.clipboard.writeText === 'function')) {
-          resultPosterStatus.innerText = '请长按或选择地址后复制。';
+          showChallengeAddressFallback();
           return;
         }
 
         navigator.clipboard.writeText(this.challengeAddress).then(() => {
           resultPosterStatus.innerText = '地址已复制，可作为文本发送；好友可粘贴到浏览器打开。';
         }).catch(() => {
-          resultPosterStatus.innerText = '请长按或选择地址后复制。';
+          showChallengeAddressFallback();
         });
       });
       document.getElementById('btn-download-poster').addEventListener('click', () => {
