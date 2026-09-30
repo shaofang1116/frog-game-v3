@@ -56,28 +56,29 @@ test('the bomb sound preserves the blast while removing its long tail', () => {
   assert.doesNotMatch(playBomb[1], /chime|shock|triangle/);
 });
 
-test('the V3 root loads the local poster helper before its inline runtime', () => {
+test('the V3 root loads the local challenge-link helper before its inline runtime', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-  const helperIndex = html.indexOf('<script src="./src/share-poster.js"></script>');
+  const helperIndex = html.indexOf('<script src="./src/challenge-link.js"></script>');
   const runtimeIndex = html.indexOf('<script>\n/**');
 
   assert.ok(helperIndex >= 0);
   assert.ok(runtimeIndex > helperIndex);
 });
 
-test('the result card uses direct result-card actions without its retired feature showcase', () => {
+test('the result card keeps only challenge copying and replay actions', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
 
   assert.doesNotMatch(html, /💡 创意与技术特性：/);
   assert.doesNotMatch(html, /id="btn-copy-share"/);
   assert.match(
     html,
-    /<button class="btn-main" id="btn-download-poster" type="button" disabled>战绩卡准备中…<\/button>/
+    /<button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址<\/button>/
   );
   assert.match(
     html,
-    /<button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址<\/button>/
+    /<button class="btn-main" id="btn-restart" type="button">🔄 再来一局<\/button>/
   );
+  assert.doesNotMatch(html, /btn-download-poster|btn-download-png|image-save-modal/);
   assert.match(html, /id="over-badge"/);
   assert.match(html, /id="over-title"/);
   assert.match(html, /id="over-rank"/);
@@ -97,7 +98,7 @@ test('the result modal is the only visible battle-card surface', () => {
   assert.match(html, /id="result-environment"/);
   assert.match(html, /class="result-score-value"><span id="res-score">0<\/span><small> 分<\/small>/);
   assert.match(html, /id="btn-copy-challenge"[^>]*disabled/);
-  assert.match(html, /id="btn-download-poster"[^>]*disabled/);
+  assert.match(html, /<button class="btn-main" id="btn-restart"/);
   assert.match(html, /id="result-poster-status"[^>]*aria-live="polite"/);
   assert.match(html, /\.result-poster-card\s*\{[\s\S]*?url\('\.\/assets\/morning-mist-pond\.jpg'\)/);
   assert.match(html, /\.result-poster-card\.stage-two\s*\{[\s\S]*?url\('\.\/assets\/storm-deep-lake-river\.jpg'\)/);
@@ -106,12 +107,12 @@ test('the result modal is the only visible battle-card surface', () => {
   assert.doesNotMatch(html, /id="btn-generate-poster"/);
 });
 
-test('the start modal has a dismissible challenge prompt backed by the poster parser', () => {
+test('the start modal has a dismissible challenge prompt backed by challenge links', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
 
   assert.match(html, /id="challenge-prompt"[^>]*hidden/);
   assert.match(html, /id="btn-dismiss-challenge"/);
-  assert.match(html, /FrogSharePoster\.parseChallengeScore\(window\.location\.search\)/);
+  assert.match(html, /FrogChallengeLink\.parseChallengeScore\(window\.location\.search\)/);
   assert.match(html, /有人打出 \$\{challengeScore\} 分，来试试超过它。/);
   assert.match(
     html,
@@ -119,17 +120,15 @@ test('the start modal has a dismissible challenge prompt backed by the poster pa
   );
 });
 
-test('game over owns one immutable completed run and prepares its result-card export', () => {
+test('game over owns one immutable completed run and prepares challenge copying', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-  const releaseResultPosterExport = html.match(
-    /releaseResultPosterExport\(invalidateGeneration = true\) \{([\s\S]*?)\n    \},\n\n    update/
+  const resetChallengeAddress = html.match(
+    /resetChallengeAddress\(\) \{([\s\S]*?)\n    \},\n\n    update/
   );
 
   assert.match(html, /completedRun:\s*null/);
-  assert.match(html, /posterObjectUrl:\s*null/);
   assert.match(html, /challengeAddress:\s*''/);
   assert.match(html, /this\.completedRun = null;/);
-  assert.match(html, /this\.posterObjectUrl = null;/);
   assert.match(
     html,
     /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*stageName: this\.getCurrentStageName\(\)\s*\}\);/
@@ -140,81 +139,32 @@ test('game over owns one immutable completed run and prepares its result-card ex
     html,
     /this\.completedRun = Object\.freeze\(\{[\s\S]*?\bmaxDistance:/
   );
-  assert.match(html, /this\.prepareResultPosterExport\(\);/);
-  assert.match(html, /result-poster-card'\)\.classList\.toggle\(\s*'stage-two'/);
-  assert.ok(releaseResultPosterExport);
-  assert.match(releaseResultPosterExport[1], /URL\.revokeObjectURL\(this\.posterObjectUrl\);/);
-  assert.match(releaseResultPosterExport[1], /this\.posterObjectUrl = null;/);
-  assert.doesNotMatch(releaseResultPosterExport[1], /(?:gameoverModal|this\.state)/);
   assert.match(
     html,
-    /start\(\) \{\s*sfx\.init\(\);\s*this\.releaseResultPosterExport\(\);/
+    /this\.challengeAddress = FrogChallengeLink\.createChallengeUrl\(\s*window\.location\.origin,\s*window\.location\.pathname,\s*this\.completedRun\.score\s*\);/
+  );
+  assert.match(html, /document\.getElementById\('btn-copy-challenge'\)\.disabled = false;/);
+  assert.match(html, /result-poster-card'\)\.classList\.toggle\(\s*'stage-two'/);
+  assert.ok(resetChallengeAddress);
+  assert.match(resetChallengeAddress[1], /this\.challengeAddress = '';/);
+  assert.match(resetChallengeAddress[1], /btnCopyChallenge\.disabled = true;/);
+  assert.match(
+    html,
+    /start\(\) \{\s*sfx\.init\(\);\s*this\.resetChallengeAddress\(\);/
   );
 });
 
-test('the unified result card exports a local PNG and retains copy controls', () => {
+test('the result card retains only the lightweight challenge copy flow', () => {
   const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-  const prepareResultPosterExport = html.match(
-    /prepareResultPosterExport\(\) \{([\s\S]*?)\n    \},\n\n    releaseResultPosterExport/
-  );
 
-  assert.ok(prepareResultPosterExport);
-  assert.match(prepareResultPosterExport[1], /document\.createElement\('canvas'\)/);
-  assert.match(prepareResultPosterExport[1], /FrogSharePoster\.renderPoster\(/);
-  assert.match(prepareResultPosterExport[1], /canvas\.toBlob\([\s\S]*?'image\/png'/);
-  assert.match(
-    prepareResultPosterExport[1],
-    /FrogSharePoster\.createChallengeUrl\(\s*window\.location\.origin,\s*window\.location\.pathname,\s*this\.completedRun\.score\s*\)/
-  );
-  assert.match(
-    prepareResultPosterExport[1],
-    /const posterBackground = this\.getStageBackground\(this\.journey\.currentStage\)\.image;[\s\S]*?FrogSharePoster\.renderPoster\(\s*context,\s*this\.completedRun,\s*challengeAddress,\s*posterBackground\s*\)/
-  );
-  assert.match(
-    prepareResultPosterExport[1],
-    /this\.releaseResultPosterExport\(false\);[\s\S]*?this\.posterObjectUrl = URL\.createObjectURL\(blob\);/
-  );
   assert.match(
     html,
     /navigator\.clipboard && typeof navigator\.clipboard\.writeText === 'function'/
   );
   assert.match(html, /navigator\.clipboard\.writeText\(this\.challengeAddress\)/);
   assert.match(html, /地址已选中，可长按或使用系统复制。/);
-  assert.match(html, /download = '荷塘大冒险-战绩卡\.png'/);
+  assert.doesNotMatch(html, /document\.createElement\('canvas'\)|canvas\.toBlob|URL\.createObjectURL|download =/);
   assert.doesNotMatch(html, /\balert\s*\(/);
-});
-
-test('saving a result image opens a long-press-safe image layer without replacing the result card', () => {
-  const html = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
-  const closeImageSaveLayer = html.match(
-    /closeImageSaveLayer\([^)]*\) \{([\s\S]*?)\n    \},\n\n    update/
-  );
-
-  assert.match(
-    html,
-    /<div class="modal-overlay image-save-overlay hidden" id="image-save-modal" role="dialog" aria-modal="true" aria-labelledby="image-save-title" hidden>/
-  );
-  assert.match(html, /<img class="save-image" id="save-image" alt="荷塘大冒险战绩卡图片">/);
-  assert.match(html, /id="btn-close-image-save"[^>]*aria-label="关闭图片保存"/);
-  assert.match(html, /id="btn-download-png"[^>]*hidden/);
-  assert.match(html, /body\.image-save-mode\s*\{[\s\S]*?touch-action:\s*auto/);
-  assert.match(html, /\.save-image\s*\{[\s\S]*?-webkit-touch-callout:\s*default/);
-  assert.match(html, /\.save-image\s*\{[\s\S]*?user-select:\s*auto/);
-  assert.match(html, /\.save-image\s*\{[\s\S]*?touch-action:\s*auto/);
-  assert.match(html, /btnDownloadPoster\.innerText = '保存战绩卡';/);
-  assert.match(
-    html,
-    /document\.getElementById\('btn-download-poster'\)\.addEventListener\('click', \(\) => \{\s*this\.openImageSaveLayer\(\);/
-  );
-  assert.match(
-    html,
-    /openImageSaveLayer\([^)]*\) \{[\s\S]*?saveImage\.src = this\.posterObjectUrl;[\s\S]*?document\.body\.classList\.add\('image-save-mode'\);[\s\S]*?btnDownloadPng\.hidden = false;[\s\S]*?imageSaveModal\.hidden = false;/
-  );
-  assert.ok(closeImageSaveLayer);
-  assert.match(closeImageSaveLayer[1], /document\.body\.classList\.remove\('image-save-mode'\);/);
-  assert.match(closeImageSaveLayer[1], /saveImage\.removeAttribute\('src'\);/);
-  assert.match(closeImageSaveLayer[1], /btnDownloadPng\.hidden = true;/);
-  assert.doesNotMatch(closeImageSaveLayer[1], /URL\.revokeObjectURL/);
 });
 
 test('clipboard fallback reveals and selects the challenge address for manual copying', () => {

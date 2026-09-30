@@ -196,79 +196,6 @@
       opacity: 0;
       pointer-events: none;
     }
-    html.image-save-mode,
-    body.image-save-mode {
-      touch-action: auto;
-    }
-    .image-save-overlay {
-      z-index: 120;
-      padding: 16px;
-      touch-action: auto;
-    }
-    .image-save-surface {
-      width: min(100%, 420px);
-      max-height: calc(100vh - 32px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      touch-action: auto;
-    }
-    .save-image-toolbar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #fff9e5;
-    }
-    .save-image-toolbar h2 {
-      font-size: 16px;
-      letter-spacing: 0;
-    }
-    .save-image-close,
-    .save-image-download {
-      border: 0;
-      background: rgba(247, 242, 216, 0.92);
-      color: #173d39;
-      cursor: pointer;
-    }
-    .save-image-close {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      font-size: 24px;
-      line-height: 1;
-    }
-    .save-image {
-      display: block;
-      max-width: 100%;
-      max-height: calc(100vh - 150px);
-      object-fit: contain;
-      border-radius: 4px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-      user-select: auto;
-      -webkit-user-select: auto;
-      -webkit-touch-callout: default;
-      touch-action: auto;
-    }
-    .save-image-hint {
-      color: #fff9e5;
-      font-size: 13px;
-      line-height: 1.4;
-      text-align: center;
-    }
-    .save-image-download {
-      display: none;
-      border-radius: 6px;
-      padding: 8px 11px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .save-image-download {
-        display: inline-flex;
-      }
-    }
     .card {
       background: #ffffff;
       width: 100%;
@@ -620,25 +547,11 @@
         </div>
       </div>
       <div class="btn-group">
-        <button class="btn-main" id="btn-download-poster" type="button" disabled>战绩卡准备中…</button>
         <button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址</button>
-        <button class="btn-secondary" id="btn-restart">🔄 再来一局</button>
+        <button class="btn-main" id="btn-restart" type="button">🔄 再来一局</button>
       </div>
       <p class="result-status" id="result-poster-status" aria-live="polite"></p>
       <textarea class="challenge-address-fallback" id="challenge-address-fallback" readonly hidden></textarea>
-    </div>
-  </div>
-
-  <!-- 保存图片层：不重复结算信息，只保留原始 PNG 以便长按保存。 -->
-  <div class="modal-overlay image-save-overlay hidden" id="image-save-modal" role="dialog" aria-modal="true" aria-labelledby="image-save-title" hidden>
-    <div class="image-save-surface">
-      <div class="save-image-toolbar">
-        <h2 id="image-save-title">保存战绩卡</h2>
-        <button class="save-image-close" id="btn-close-image-save" type="button" aria-label="关闭图片保存">×</button>
-      </div>
-      <img class="save-image" id="save-image" alt="荷塘大冒险战绩卡图片">
-      <p class="save-image-hint">长按图片，选择“保存图片”</p>
-      <button class="save-image-download" id="btn-download-png" type="button" hidden>下载 PNG</button>
     </div>
   </div>
 
@@ -669,7 +582,7 @@
 <script src="./src/map-path.js"></script>
 <script src="./src/game-elements.js"></script>
 <script src="./src/stage-transition.js"></script>
-<script src="./src/share-poster.js"></script>
+<script src="./src/challenge-link.js"></script>
 <script>
 /**
  * 荷塘大冒险 (Frog Pond Adventure)
@@ -836,10 +749,7 @@
     highScore: parseInt(localStorage.getItem('frog_game_high') || '0', 10),
     journey: FrogJourney.createJourney(FrogChapters.getJourneyOptions()),
     completedRun: null,
-    posterObjectUrl: null,
     challengeAddress: '',
-    saveImageTrigger: null,
-    posterGenerationId: 0,
 
     cameraY: 0,
     targetCameraY: 0,
@@ -959,7 +869,7 @@
 
     start() {
       sfx.init();
-      this.releaseResultPosterExport();
+      this.resetChallengeAddress();
       this.state = 'PLAYING';
       this.score = 0;
       this.maxDistance = 0;
@@ -1023,7 +933,7 @@
     },
 
     showChallengePrompt() {
-      const challengeScore = FrogSharePoster.parseChallengeScore(window.location.search);
+      const challengeScore = FrogChallengeLink.parseChallengeScore(window.location.search);
       if (challengeScore === null) return;
 
       const challengePrompt = document.getElementById('challenge-prompt');
@@ -1337,130 +1247,28 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
         'stage-three',
         this.completedRun.stageName === '暮色芦苇终塘'
       );
-      this.prepareResultPosterExport();
+      this.challengeAddress = FrogChallengeLink.createChallengeUrl(
+        window.location.origin,
+        window.location.pathname,
+        this.completedRun.score
+      );
+      document.getElementById('btn-copy-challenge').disabled = false;
+      document.getElementById('result-poster-status').innerText = '';
 
       setTimeout(() => {
         document.getElementById('gameover-modal').classList.remove('hidden');
       }, 400);
     },
 
-    prepareResultPosterExport() {
-      const btnDownloadPoster = document.getElementById('btn-download-poster');
-      const resultPosterStatus = document.getElementById('result-poster-status');
-
-      if (!this.completedRun) {
-        resultPosterStatus.innerText = '本局战绩尚未准备好，请再试一次。';
-        return;
-      }
-
-      const generationId = ++this.posterGenerationId;
-      btnDownloadPoster.disabled = true;
-      btnDownloadPoster.innerText = '战绩卡准备中…';
-      resultPosterStatus.innerText = '';
-
-      const failGeneration = () => {
-        if (generationId !== this.posterGenerationId) return;
-        btnDownloadPoster.disabled = true;
-        btnDownloadPoster.innerText = '战绩卡生成失败';
-        resultPosterStatus.innerText = '战绩卡生成失败，请重开后再试。';
-      };
-
-      try {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context || typeof canvas.toBlob !== 'function') {
-          throw new Error('Canvas PNG export is unavailable.');
-        }
-
-        const challengeAddress = FrogSharePoster.createChallengeUrl(
-          window.location.origin,
-          window.location.pathname,
-          this.completedRun.score
-        );
-        const posterBackground = this.getStageBackground(this.journey.currentStage).image;
-        FrogSharePoster.renderPoster(
-          context,
-          this.completedRun,
-          challengeAddress,
-          posterBackground
-        );
-        canvas.toBlob((blob) => {
-          if (generationId !== this.posterGenerationId) return;
-          if (!blob) {
-            failGeneration();
-            return;
-          }
-
-          this.releaseResultPosterExport(false);
-          this.posterObjectUrl = URL.createObjectURL(blob);
-          this.challengeAddress = challengeAddress;
-          document.getElementById('btn-copy-challenge').disabled = false;
-          btnDownloadPoster.disabled = false;
-          btnDownloadPoster.innerText = '保存战绩卡';
-        }, 'image/png');
-      } catch (error) {
-        failGeneration();
-      }
-    },
-
-    releaseResultPosterExport(invalidateGeneration = true) {
+    resetChallengeAddress() {
       const btnCopyChallenge = document.getElementById('btn-copy-challenge');
-      const btnDownloadPoster = document.getElementById('btn-download-poster');
       const challengeAddressFallback = document.getElementById('challenge-address-fallback');
 
-      this.closeImageSaveLayer(false);
-      if (invalidateGeneration) this.posterGenerationId++;
-      if (this.posterObjectUrl) {
-        URL.revokeObjectURL(this.posterObjectUrl);
-        this.posterObjectUrl = null;
-      }
       this.challengeAddress = '';
       challengeAddressFallback.hidden = true;
       challengeAddressFallback.value = '';
       btnCopyChallenge.disabled = true;
-      btnDownloadPoster.disabled = true;
-      btnDownloadPoster.innerText = '战绩卡准备中…';
-    },
-
-    openImageSaveLayer(trigger = document.activeElement) {
-      const imageSaveModal = document.getElementById('image-save-modal');
-      const saveImage = document.getElementById('save-image');
-      const resultPosterStatus = document.getElementById('result-poster-status');
-      const btnDownloadPng = document.getElementById('btn-download-png');
-
-      if (!this.posterObjectUrl) {
-        resultPosterStatus.innerText = '战绩卡尚未准备好，请稍后再试。';
-        return;
-      }
-
-      this.saveImageTrigger = trigger;
-      saveImage.onerror = () => {
-        this.closeImageSaveLayer();
-        resultPosterStatus.innerText = '战绩卡图片加载失败，请重开后再试。';
-      };
-      saveImage.src = this.posterObjectUrl;
-      document.documentElement.classList.add('image-save-mode');
-      document.body.classList.add('image-save-mode');
-      btnDownloadPng.hidden = false;
-      imageSaveModal.hidden = false;
-      imageSaveModal.classList.remove('hidden');
-      document.getElementById('btn-close-image-save').focus();
-    },
-
-    closeImageSaveLayer(restoreFocus = true) {
-      const imageSaveModal = document.getElementById('image-save-modal');
-      const saveImage = document.getElementById('save-image');
-      const btnDownloadPng = document.getElementById('btn-download-png');
-
-      imageSaveModal.hidden = true;
-      imageSaveModal.classList.add('hidden');
-      document.documentElement.classList.remove('image-save-mode');
-      document.body.classList.remove('image-save-mode');
-      saveImage.onerror = null;
-      saveImage.removeAttribute('src');
-      btnDownloadPng.hidden = true;
-      if (restoreFocus) this.saveImageTrigger?.focus();
-      this.saveImageTrigger = null;
+      document.getElementById('result-poster-status').innerText = '';
     },
 
     update(dt) {
@@ -1715,12 +1523,6 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       this.drawViewportAnchoredBackground(ctx, this.stageThreeBackground.image);
     },
 
-    getStageBackground(stage) {
-      if (stage === 1) return this.stageOneBackground;
-      if (stage === 2) return this.stageTwoBackground;
-      return this.stageThreeBackground;
-    },
-
     getCurrentStageName() {
       if (this.journey.currentStage === 1) return '晨雾浅塘';
       if (this.journey.currentStage === 2) return '暴雨深湖';
@@ -1861,11 +1663,6 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
 
       // 键盘控制 (PC)
       window.addEventListener('keydown', (e) => {
-        const imageSaveModal = document.getElementById('image-save-modal');
-        if (!imageSaveModal.hidden) {
-          if (e.key === 'Escape') this.closeImageSaveLayer();
-          return;
-        }
         if (e.repeat) return;
         const key = e.key.toLowerCase();
         const jump = FrogInput.getKeyboardJump(e);
@@ -1933,19 +1730,6 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
         }).catch(() => {
           showChallengeAddressFallback();
         });
-      });
-      document.getElementById('btn-download-poster').addEventListener('click', () => {
-        this.openImageSaveLayer();
-      });
-      document.getElementById('btn-close-image-save').addEventListener('click', () => {
-        this.closeImageSaveLayer();
-      });
-      document.getElementById('btn-download-png').addEventListener('click', () => {
-        if (!this.posterObjectUrl) return;
-        const downloadLink = document.createElement('a');
-        downloadLink.href = this.posterObjectUrl;
-        downloadLink.download = '荷塘大冒险-战绩卡.png';
-        downloadLink.click();
       });
       const challengePrompt = document.getElementById('challenge-prompt');
       const btnDismissChallenge = document.getElementById('btn-dismiss-challenge');

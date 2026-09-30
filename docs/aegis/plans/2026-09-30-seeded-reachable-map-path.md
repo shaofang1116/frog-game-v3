@@ -126,7 +126,7 @@ Verification: TRAE built-in browser real-device-style acceptance.
 
 Files: no production changes unless a verified failure identifies an integration defect.
 
-Why: protect existing rewards, poster, input, and map-theme contracts.
+Why: protect existing rewards, challenge-link, input, and map-theme contracts.
 
 Verification:
 
