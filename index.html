@@ -412,6 +412,12 @@
       font-size: 12px;
       margin-top: 8px;
     }
+    .result-settlement {
+      margin: 0 0 16px;
+      color: #cde8dc;
+      font-size: 12px;
+      line-height: 1.6;
+    }
     .challenge-address-fallback {
       width: 100%;
       min-height: 58px;
@@ -546,6 +552,7 @@
           <div class="value" id="res-best">0</div>
         </div>
       </div>
+      <p class="result-settlement" id="result-settlement"></p>
       <div class="btn-group">
         <button class="btn-secondary" id="btn-copy-challenge" type="button" disabled>复制挑战地址</button>
         <button class="btn-main" id="btn-restart" type="button">🔄 再来一局</button>
@@ -578,6 +585,7 @@
 
 <script src="./src/input.js"></script>
 <script src="./src/chapters.js"></script>
+<script src="./src/rewards.js"></script>
 <script src="./src/journey.js"></script>
 <script src="./src/map-path.js"></script>
 <script src="./src/game-elements.js"></script>
@@ -875,6 +883,7 @@
       this.maxDistance = 0;
       this.completedRun = null;
       document.getElementById('result-poster-status').innerText = '';
+      document.getElementById('result-settlement').innerText = '';
       this.timeLeft = 30;
       this.bombs = 2;
       this.cameraY = 0;
@@ -1210,6 +1219,17 @@
       else sfx.playGameOver();
 
       this.survivalTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
+      const settlement = FrogRewards.settleRun({
+        score: this.score,
+        timeLeft: this.timeLeft,
+        bombs: this.bombs,
+        completed
+      }, completed ? FrogChapters.getStage(this.journey.currentStage) : null);
+      if (!settlement.applied) throw new Error('Invalid run settlement');
+      this.score = settlement.nextScore;
+      this.timeLeft = settlement.nextTimeLeft;
+      this.bombs = settlement.nextBombs;
+      this.updateUI();
       if (this.score > this.highScore) {
         this.highScore = this.score;
         localStorage.setItem('frog_game_high', this.highScore.toString());
@@ -1228,6 +1248,11 @@
         highScore: this.highScore,
         rank,
         completed,
+        settlement: Object.freeze({
+          ...settlement.breakdown,
+          time: Object.freeze(settlement.breakdown.time),
+          bombs: Object.freeze(settlement.breakdown.bombs)
+        }),
         stageName: this.getCurrentStageName()
       });
 
@@ -1238,6 +1263,11 @@ document.getElementById('over-rank').innerText = `获得称号：${this.complete
       document.getElementById('res-distance').innerText = `${this.completedRun.distance}m`;
       document.getElementById('res-time').innerText = `${this.completedRun.survivalTime}s`;
       document.getElementById('res-best').innerText = this.completedRun.highScore;
+      const breakdown = this.completedRun.settlement;
+      document.getElementById('result-settlement').innerText =
+        `本局 ${breakdown.scoreBefore} · 时间 +${breakdown.time.bonus}（${breakdown.time.units}秒）` +
+        ` · 炸弹 +${breakdown.bombs.bonus}（${breakdown.bombs.units}枚）` +
+        (completed ? ` · 通关 +${breakdown.lotusScore}` : '');
       document.getElementById('result-environment').innerText = this.completedRun.stageName;
       document.getElementById('result-poster-card').classList.toggle(
         'stage-two',

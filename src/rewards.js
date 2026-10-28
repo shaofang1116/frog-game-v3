@@ -5,6 +5,25 @@
   }
   root.FrogRewards = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createRewards() {
+  function settleRun(input, finalChapter) {
+    if (!input || typeof input.completed !== 'boolean' ||
+        ![input.score, input.timeLeft, input.bombs].every(isNonNegativeSafeInteger)) {
+      return notApplied(input);
+    }
+    if (input.completed) {
+      if (!isValidChapter(finalChapter) || finalChapter.reward.finalConversion !== true) {
+        return notApplied(input);
+      }
+      return settleCheckpoint({
+        ...input,
+        stageId: finalChapter.id,
+        checkpointId: finalChapter.checkpoint.id,
+        claimedCheckpointIds: []
+      }, finalChapter);
+    }
+    return settleResourceConversion(input, { score: 0, time: 0, bomb: 0 }, []);
+  }
+
   function settleCheckpoint(input, chapter) {
     if (!isValidInput(input) || !isValidChapter(chapter) || !matchesCheckpoint(input, chapter)) {
       return notApplied(input);
@@ -16,7 +35,7 @@
 
     const claimedCheckpointIds = input.claimedCheckpointIds.concat(input.checkpointId);
     if (chapter.reward.finalConversion === true) {
-      return settleFinalStage(input, chapter, claimedCheckpointIds);
+      return settleResourceConversion(input, chapter.reward, claimedCheckpointIds);
     }
     return settleStandardStage(input, chapter, claimedCheckpointIds);
   }
@@ -58,12 +77,12 @@
     };
   }
 
-  function settleFinalStage(input, chapter, claimedCheckpointIds) {
-    const timeUnits = input.timeLeft + chapter.reward.time;
-    const bombUnits = input.bombs + chapter.reward.bomb;
+  function settleResourceConversion(input, reward, claimedCheckpointIds) {
+    const timeUnits = input.timeLeft + reward.time;
+    const bombUnits = input.bombs + reward.bomb;
     const timeBonus = timeUnits * 10;
     const bombBonus = bombUnits * 50;
-    const scoreAfterLotus = input.score + chapter.reward.score;
+    const scoreAfterLotus = input.score + reward.score;
     const nextScore = scoreAfterLotus + timeBonus + bombBonus;
 
     return {
@@ -74,22 +93,22 @@
       nextClaimedCheckpointIds: claimedCheckpointIds,
       breakdown: {
         scoreBefore: input.score,
-        lotusScore: chapter.reward.score,
+        lotusScore: reward.score,
         scoreAfterLotus,
         time: {
           actual: input.timeLeft,
-          virtual: chapter.reward.time,
+          virtual: reward.time,
           units: timeUnits,
           bonus: timeBonus
         },
         bombs: {
           actual: input.bombs,
-          virtual: chapter.reward.bomb,
+          virtual: reward.bomb,
           units: bombUnits,
-          granted: chapter.reward.bomb,
+          granted: reward.bomb,
           bonus: bombBonus
         },
-        lotusContribution: chapter.reward.score + chapter.reward.time * 10 + chapter.reward.bomb * 50,
+        lotusContribution: reward.score + reward.time * 10 + reward.bomb * 50,
         finalScore: nextScore
       }
     };
@@ -152,6 +171,7 @@
   }
 
   return Object.freeze({
+    settleRun,
     settleCheckpoint
   });
 });

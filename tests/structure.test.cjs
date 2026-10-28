@@ -131,7 +131,7 @@ test('game over owns one immutable completed run and prepares challenge copying'
   assert.match(html, /this\.completedRun = null;/);
   assert.match(
     html,
-    /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*stageName: this\.getCurrentStageName\(\)\s*\}\);/
+    /this\.completedRun = Object\.freeze\(\{\s*score: this\.score,\s*distance: this\.maxDistance,\s*survivalTime: this\.survivalTime,\s*highScore: this\.highScore,\s*rank,\s*completed,\s*settlement: Object\.freeze\(\{\s*\.\.\.settlement\.breakdown,\s*time: Object\.freeze\(settlement\.breakdown\.time\),\s*bombs: Object\.freeze\(settlement\.breakdown\.bombs\)\s*\}\),\s*stageName: this\.getCurrentStageName\(\)\s*\}\);/
   );
   assert.match(html, /document\.getElementById\('res-score'\)\.innerText = this\.completedRun\.score;/);
   assert.match(html, /document\.getElementById\('res-distance'\)\.innerText = `\$\{this\.completedRun\.distance\}m`;/);
